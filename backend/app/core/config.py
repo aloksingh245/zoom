@@ -1,17 +1,32 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import List
 
 
 class Settings(BaseSettings):
     app_env: str = "dev"
+    app_name: str = "Class Scheduler API"
+    app_version: str = "1.0.0"
+
+    # Zoom Configuration
     zoom_bearer_token: str = ""
     zoom_user_id: str = ""
     zoom_account_id: str = ""
     zoom_client_id: str = ""
     zoom_client_secret: str = ""
+
+    # Application Defaults
     timezone_default: str = "Asia/Kolkata"
+    class_duration_minutes: int = 90
+
+    # CORS Configuration
     cors_allow_origins: str = "*"
 
     model_config = SettingsConfigDict(env_file=".env", env_prefix="", extra="ignore")
+
+    @property
+    def cors_origins(self) -> List[str]:
+        origins = [o.strip() for o in self.cors_allow_origins.split(",") if o.strip()]
+        return origins if origins else ["*"]
 
 
 settings = Settings()

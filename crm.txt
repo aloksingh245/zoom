@@ -36,7 +36,7 @@ Adopted stylesheets are now visible under shadow roots in the Elements panel.
 
 
 Authorization
-Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6ImFsb2tzaW5naHJhanB1dDI3MjRAZ21haWwuY29tIiwic3ViIjoiYWYwYzgwMDAtMTZiNC00OTA0LTk5ZTAtYjAwYTNlOTY3ZjU4Iiwicm9sZSI6IkFETUlOIiwiaWF0IjoxNzY5OTMzNTAwLCJleHAiOjE3Njk5MzQ0MDB9.rHO75r-fB9ZjnHNelKqS7nqhR3cGNtiIew-F0mpqCvE
+Bearer YOUR_TOKEN
 
 
 

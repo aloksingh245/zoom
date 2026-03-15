@@ -1,4 +1,4 @@
-I want you to create a POC for a mini project internal too to
+want you to create a POC for a mini project internal too to
   schedule classes for student for different course....
 
 

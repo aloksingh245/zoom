@@ -1,22 +1,30 @@
 from __future__ import annotations
 
-from __future__ import annotations
-
+import logging
 from base64 import b64encode
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Dict, Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import httpx
 
-from .settings import settings
+from ..core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
-class ZoomClient:
-    def __init__(self) -> None:
-        self.base_url = "https://api.zoom.us/v2"
-        self._access_token: Optional[str] = None
-        self._access_token_expiry: Optional[datetime] = None
+class ZoomService:
+    """Service to handle communication with Zoom REST API v2."""
+    
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(ZoomService, cls).__new__(cls)
+            cls._instance.base_url = "https://api.zoom.us/v2"
+            cls._instance._access_token = None
+            cls._instance._access_token_expiry = None
+        return cls._instance
 
     def ensure_configured(self) -> None:
         has_oauth = bool(settings.zoom_account_id and settings.zoom_client_id and settings.zoom_client_secret)
@@ -53,10 +61,10 @@ class ZoomClient:
         data = resp.json()
         access_token = data.get("access_token")
         expires_in = data.get("expires_in", 0)
+        
         if not access_token:
             raise RuntimeError("Zoom OAuth token response missing access_token.")
 
-        # Refresh a bit early to avoid edge timing.
         self._access_token = access_token
         self._access_token_expiry = datetime.utcnow() + timedelta(seconds=max(0, int(expires_in) - 60))
         return access_token
@@ -70,28 +78,32 @@ class ZoomClient:
             timezone = settings.timezone_default
         return timezone
 
-    def build_start_payload(self, date_str: str, time_str: str, timezone: str) -> tuple[str, str]:
-        timezone = self.normalize_timezone(timezone)
-        try:
-            naive = datetime.fromisoformat(f"{date_str}T{time_str}:00")
-        except ValueError as exc:
-            raise ValueError(f"Invalid date/time: {exc}") from exc
-        _ = naive
-        start_time = f"{date_str}T{time_str}:00"
-        return start_time, timezone
+    def _build_start_time(self, date_str: str, time_str: str) -> str:
+        return f"{date_str}T{time_str}:00"
 
-    async def create_meeting(self, *, topic: str, agenda: str | None, date: str, start_time: str, timezone: str, duration: int = 90) -> dict:
+    async def create_meeting(
+        self, 
+        *, 
+        topic: str, 
+        agenda: str | None, 
+        date: str, 
+        start_time: str, 
+        timezone: str, 
+        duration: int = 90
+    ) -> Dict[str, Any]:
         self.ensure_configured()
-        start_time, timezone = self.build_start_payload(date, start_time, timezone)
+        timezone = self.normalize_timezone(timezone)
         access_token = await self.get_access_token()
+        
         payload = {
             "topic": topic,
             "agenda": agenda or "",
             "type": 2,
-            "start_time": start_time,
+            "start_time": self._build_start_time(date, start_time),
             "duration": duration,
             "timezone": timezone,
         }
+        
         async with httpx.AsyncClient(timeout=20) as client:
             resp = await client.post(
                 f"{self.base_url}/users/{settings.zoom_user_id}/meetings",
@@ -104,18 +116,30 @@ class ZoomClient:
         resp.raise_for_status()
         return resp.json()
 
-    async def update_meeting(self, *, meeting_id: str, topic: str, agenda: str | None, date: str, start_time: str, timezone: str, duration: int = 90) -> None:
+    async def update_meeting(
+        self, 
+        *, 
+        meeting_id: str, 
+        topic: str, 
+        agenda: str | None, 
+        date: str, 
+        start_time: str, 
+        timezone: str, 
+        duration: int = 90
+    ) -> None:
         self.ensure_configured()
-        start_time, timezone = self.build_start_payload(date, start_time, timezone)
+        timezone = self.normalize_timezone(timezone)
         access_token = await self.get_access_token()
+        
         payload = {
             "topic": topic,
             "agenda": agenda or "",
             "type": 2,
-            "start_time": start_time,
+            "start_time": self._build_start_time(date, start_time),
             "duration": duration,
             "timezone": timezone,
         }
+        
         async with httpx.AsyncClient(timeout=20) as client:
             resp = await client.patch(
                 f"{self.base_url}/meetings/{meeting_id}",
@@ -136,3 +160,19 @@ class ZoomClient:
                 headers={"Authorization": f"Bearer {access_token}"},
             )
         resp.raise_for_status()
+
+    async def list_meetings(self) -> Dict[str, Any]:
+        """List all meetings for the configured user."""
+        self.ensure_configured()
+        access_token = await self.get_access_token()
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.get(
+                f"{self.base_url}/users/{settings.zoom_user_id}/meetings",
+                headers={"Authorization": f"Bearer {access_token}"},
+                params={"type": "upcoming", "page_size": 300}
+            )
+        resp.raise_for_status()
+        return resp.json()
+
+
+zoom_service = ZoomService()
