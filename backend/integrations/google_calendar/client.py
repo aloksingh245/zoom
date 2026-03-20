@@ -136,6 +136,14 @@ class CalendarService:
         try:
             service = build('calendar', 'v3', credentials=creds)
             
+            # Fetch organizer outside the synchronous closure
+            organizer_email = None
+            if mentor_email:
+                def get_calendar():
+                    return service.calendars().get(calendarId='primary').execute()
+                cal_meta = await self._execute_sync(get_calendar)
+                organizer_email = cal_meta.get('id')
+
             def make_request():
                 event = service.events().get(calendarId='primary', eventId=event_id).execute()
                 
@@ -155,13 +163,7 @@ class CalendarService:
                     event['end'] = {'dateTime': end_dt_utc.isoformat().replace("+00:00", "Z")}
                 
                 if mentor_email:
-                    # Get organizer email to avoid inviting self
-                    def get_calendar():
-                        return service.calendars().get(calendarId='primary').execute()
-                    cal_meta = await self._execute_sync(get_calendar)
-                    organizer_email = cal_meta.get('id')
-
-                    if mentor_email.lower() != organizer_email.lower():
+                    if organizer_email and mentor_email.lower() != organizer_email.lower():
                         event['attendees'] = [{'email': mentor_email}]
                     else:
                         event['attendees'] = []
