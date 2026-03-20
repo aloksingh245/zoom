@@ -75,21 +75,21 @@ export default function App() {
     setIsModalOpen(true)
   }
 
-function openEdit(item) {
-  setEditing(item)
-  setLocalError('')
-  setForm({
-    course_id: item.course_id,
-    course_name: item.course_name,
-    topic_name: item.topic_name,
-    assignment_name: item.assignment_name || '',
-    date: item.date,
-    start_time: item.start_time,
-    duration_minutes: item.duration_minutes || 90,
-    timezone: item.timezone,
-  })
-  setIsModalOpen(true)
-}
+  function openEdit(item) {
+    setEditing(item)
+    setLocalError('')
+    setForm({
+      course_id: item.course_id,
+      course_name: item.course_name,
+      topic_name: item.topic_name,
+      assignment_name: item.assignment_name || '',
+      date: item.date,
+      start_time: item.start_time,
+      duration_minutes: item.duration_minutes || 90,
+      timezone: item.timezone,
+    })
+    setIsModalOpen(true)
+  }
 
   async function handleSave(e) {
     e.preventDefault()
