@@ -68,9 +68,17 @@ class CalendarService:
         end_dt_utc = end_dt_aware.astimezone(ZoneInfo("UTC"))
         end_dt = end_dt_utc.isoformat().replace("+00:00", "Z")
         
-        attendees = [
-            {'email': mentor_email, 'responseStatus': 'needsAction'}
-        ] if mentor_email else []
+        # Get organizer email to avoid inviting self
+        service = build('calendar', 'v3', credentials=creds)
+        def get_calendar():
+            return service.calendars().get(calendarId='primary').execute()
+        
+        cal_meta = await self._execute_sync(get_calendar)
+        organizer_email = cal_meta.get('id')
+        
+        attendees = []
+        if mentor_email and mentor_email.lower() != organizer_email.lower():
+            attendees.append({'email': mentor_email})
 
         event = {
             'summary': topic,
@@ -92,8 +100,6 @@ class CalendarService:
         }
 
         try:
-            service = build('calendar', 'v3', credentials=creds)
-            
             def make_request():
                 return service.events().insert(
                     calendarId='primary',
@@ -149,7 +155,16 @@ class CalendarService:
                     event['end'] = {'dateTime': end_dt_utc.isoformat().replace("+00:00", "Z")}
                 
                 if mentor_email:
-                    event['attendees'] = [{'email': mentor_email, 'responseStatus': 'needsAction'}]
+                    # Get organizer email to avoid inviting self
+                    def get_calendar():
+                        return service.calendars().get(calendarId='primary').execute()
+                    cal_meta = await self._execute_sync(get_calendar)
+                    organizer_email = cal_meta.get('id')
+
+                    if mentor_email.lower() != organizer_email.lower():
+                        event['attendees'] = [{'email': mentor_email}]
+                    else:
+                        event['attendees'] = []
 
                 return service.events().update(
                     calendarId='primary',

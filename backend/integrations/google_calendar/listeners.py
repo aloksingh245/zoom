@@ -57,7 +57,7 @@ async def handle_class_updated(updated_class: ClassSchema):
                     start_time=updated_class.start_time,
                     zoom_link=updated_class.zoom_join_url,
                     timezone=updated_class.timezone,
-                    duration=created_class.duration_minutes
+                    duration=updated_class.duration_minutes
                 )
                 if event_id:
                     try:
