@@ -8,7 +8,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import httpx
 
-from ..core.config import settings
+from core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -170,6 +170,18 @@ class ZoomService:
                 f"{self.base_url}/users/{settings.zoom_user_id}/meetings",
                 headers={"Authorization": f"Bearer {access_token}"},
                 params={"type": "upcoming", "page_size": 300}
+            )
+        resp.raise_for_status()
+        return resp.json()
+
+    async def get_meeting(self, meeting_id: str) -> Dict[str, Any]:
+        """Fetch details for a specific meeting."""
+        self.ensure_configured()
+        access_token = await self.get_access_token()
+        async with httpx.AsyncClient(timeout=20) as client:
+            resp = await client.get(
+                f"{self.base_url}/meetings/{meeting_id}",
+                headers={"Authorization": f"Bearer {access_token}"},
             )
         resp.raise_for_status()
         return resp.json()

@@ -1,6 +1,21 @@
-import { Search, Plus, Bell } from 'lucide-react'
+import { useState } from 'react'
+import { Search, Plus, Bell, RotateCw } from 'lucide-react'
 
-export function TopBar({ searchTerm, setSearchTerm, openCreate }) {
+export function TopBar({ searchTerm, setSearchTerm, openCreate, syncClasses, loading }) {
+  const [isSyncing, setIsSyncing] = useState(false)
+
+  const handleSync = async () => {
+    setIsSyncing(true)
+    try {
+      const result = await syncClasses()
+      alert(`Sync complete! Checked ${result.total_checked} classes, removed ${result.removed} broken links.`)
+    } catch (err) {
+      alert('Sync failed: ' + err.message)
+    } finally {
+      setIsSyncing(false)
+    }
+  }
+
   return (
     <header className="h-20 border-b border-slate-100 bg-white flex items-center justify-between px-10 z-10 shadow-sm">
       <div className="flex items-center flex-1 max-w-2xl">
@@ -17,6 +32,16 @@ export function TopBar({ searchTerm, setSearchTerm, openCreate }) {
       </div>
       <div className="flex items-center gap-6">
         <div className="flex items-center gap-2">
+           <div className="relative">
+             <button 
+                onClick={handleSync}
+                disabled={isSyncing || loading}
+                title="Sync with Zoom"
+                className={`p-2.5 bg-slate-50 text-slate-500 hover:bg-slate-100 rounded-xl transition-all ${isSyncing ? 'animate-spin' : ''}`}
+             >
+               <RotateCw size={20} />
+             </button>
+           </div>
            <div className="relative">
              <button className="p-2.5 bg-slate-50 text-slate-500 hover:bg-slate-100 rounded-xl transition-all"><Bell size={20} /></button>
              <span className="absolute top-2 right-2 w-2 h-2 bg-indigo-600 rounded-full border-2 border-white"></span>

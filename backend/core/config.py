@@ -14,6 +14,11 @@ class Settings(BaseSettings):
     zoom_client_id: str = ""
     zoom_client_secret: str = ""
 
+    # Google Configuration
+    google_calendar_id: str = "primary"
+    google_sheet_id: str = ""
+    google_credentials_file: str = "credentials.json"
+
     # Application Defaults
     timezone_default: str = "Asia/Kolkata"
     class_duration_minutes: int = 90

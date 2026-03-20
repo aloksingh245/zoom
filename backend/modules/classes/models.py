@@ -1,17 +1,7 @@
 from datetime import datetime
 from sqlalchemy import String, Integer, DateTime, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from .database import Base
-
-
-class Course(Base):
-    __tablename__ = "courses"
-
-    id: Mapped[str] = mapped_column(String, primary_key=True)
-    name: Mapped[str] = mapped_column(String, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-
-    classes: Mapped[list["ClassSession"]] = relationship("ClassSession", back_populates="course", cascade="all, delete-orphan")
+from core.base import Base
 
 
 class ClassSession(Base):
@@ -28,6 +18,9 @@ class ClassSession(Base):
     timezone: Mapped[str] = mapped_column(String)
     zoom_meeting_id: Mapped[str] = mapped_column(String)
     zoom_join_url: Mapped[str] = mapped_column(String)
+    calendar_event_id: Mapped[str | None] = mapped_column(String, nullable=True)
+    mentor_email: Mapped[str | None] = mapped_column(String, nullable=True)
+    sheet_row_id: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

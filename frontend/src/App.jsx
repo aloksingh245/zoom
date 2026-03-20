@@ -19,6 +19,7 @@ function emptyForm(date) {
     assignment_name: '',
     date: date,
     start_time: '09:00',
+    duration_minutes: 90,
     timezone: DEFAULT_TIMEZONE,
   }
 }
@@ -39,6 +40,7 @@ export default function App() {
     addClass, 
     editClass, 
     removeClass,
+    syncWithZoom,
     classesByDate 
   } = useClasses()
 
@@ -73,26 +75,28 @@ export default function App() {
     setIsModalOpen(true)
   }
 
-  function openEdit(item) {
-    setEditing(item)
-    setForm({
-      course_id: item.course_id,
-      course_name: item.course_name,
-      topic_name: item.topic_name,
-      assignment_name: item.assignment_name || '',
-      date: item.date,
-      start_time: item.start_time,
-      timezone: item.timezone,
-    })
-    setIsModalOpen(true)
-  }
+function openEdit(item) {
+  setEditing(item)
+  setLocalError('')
+  setForm({
+    course_id: item.course_id,
+    course_name: item.course_name,
+    topic_name: item.topic_name,
+    assignment_name: item.assignment_name || '',
+    date: item.date,
+    start_time: item.start_time,
+    duration_minutes: item.duration_minutes || 90,
+    timezone: item.timezone,
+  })
+  setIsModalOpen(true)
+}
 
   async function handleSave(e) {
     e.preventDefault()
     setLocalError('')
     
     if (isPastLocal(form.date, form.start_time, form.timezone)) {
-      setLocalError('Start time must be in the future (Asia/Kolkata).')
+      setLocalError(`Start time must be in the future (${form.timezone}).`)
       return
     }
 
@@ -143,6 +147,8 @@ export default function App() {
           searchTerm={searchTerm} 
           setSearchTerm={setSearchTerm} 
           openCreate={() => openCreate()} 
+          syncClasses={syncWithZoom}
+          loading={classesLoading}
         />
 
         <div className="flex-1 overflow-y-auto p-10 bg-slate-50/30">

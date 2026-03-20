@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { listClasses, createClass, updateClass, deleteClass } from '../services/api'
+import { listClasses, createClass, updateClass, deleteClass, syncClasses } from '../services/api'
 import { getClassStatus } from '../utils/dateUtils'
 
 export function useClasses() {
@@ -40,6 +40,20 @@ export function useClasses() {
     setClasses(prev => prev.filter(item => item.id !== id))
   }
 
+  const syncWithZoom = async () => {
+    setLoading(true)
+    try {
+      const result = await syncClasses()
+      await fetchClasses()
+      return result
+    } catch (err) {
+      setError(err.message)
+      throw err
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const classesByDate = useMemo(() => {
     const map = new Map()
     classes.forEach(item => {
@@ -58,6 +72,7 @@ export function useClasses() {
     addClass, 
     editClass, 
     removeClass,
+    syncWithZoom,
     classesByDate
   }
 }

@@ -4,23 +4,23 @@ import { getClassStatus, getEndTime } from '../../utils/dateUtils'
 
 export function MeetingCard({ item, onEdit }) {
   const status = getClassStatus(item)
-  const endTime = getEndTime(item.start_time)
+  const duration = item.duration_minutes || 90
+  const endTime = getEndTime(item.start_time, duration)
 
   const hoverInfo = `Meeting: ${item.topic_name}\nCourse: ${item.course_name}\nTime: ${item.start_time} - ${endTime}\nAssignment: ${item.assignment_name || 'None'}`
 
   return (
-    <div 
+    <div
       title={hoverInfo}
       className={cn(
         "absolute left-1.5 right-1.5 rounded-2xl p-4 border shadow-xl transition-all hover:scale-[1.03] hover:z-10 cursor-pointer overflow-hidden group/item",
-        status === 'completed' ? "bg-slate-100 border-slate-200 opacity-60 grayscale-[0.3]" : 
+        status === 'completed' ? "bg-slate-100 border-slate-200 opacity-60 grayscale-[0.3]" :
         "bg-red-600 border-red-700 shadow-red-200/40 text-white"
       )}
-      style={{ 
-        top: `${(parseInt(item.start_time.split(':')[0]) * 96) + (parseInt(item.start_time.split(':')[1]) / 60 * 96)}px`, 
-        height: `${(90 / 60 * 96)}px` 
-      }}
-      onClick={(e) => { e.stopPropagation(); onEdit(item); }}
+      style={{
+        top: `${(parseInt(item.start_time.split(':')[0]) * 96) + (parseInt(item.start_time.split(':')[1]) / 60 * 96)}px`,
+        height: `${(duration / 60 * 96)}px`
+      }}      onClick={(e) => { e.stopPropagation(); onEdit(item); }}
     >
       <div className="flex items-center justify-between mb-2">
         <span className={cn("text-[10px] font-black uppercase tracking-widest", status === 'completed' ? "text-slate-400" : "text-red-100")}>{item.start_time} - {endTime}</span>

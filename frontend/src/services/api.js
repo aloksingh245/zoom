@@ -42,6 +42,12 @@ export async function deleteClass(id) {
   })
 }
 
+export async function syncClasses() {
+  return request('/api/classes/sync', {
+    method: 'POST',
+  })
+}
+
 export async function listCourses() {
   return request('/api/courses')
 }

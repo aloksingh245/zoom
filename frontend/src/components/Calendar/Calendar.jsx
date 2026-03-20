@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight, Clock, Plus } from 'lucide-react'
-import { HOURS } from '../../constants'
+import { HOURS, DEFAULT_TIMEZONE } from '../../constants'
 import { formatDate, dayLabel, formatHour } from '../../utils/dateUtils'
 import { cn } from '../../utils/cn'
 import { MeetingCard } from './MeetingCard'
@@ -28,7 +28,7 @@ export function Calendar({ weekStart, weekAnchor, setWeekAnchor, classesByDate, 
         <div className="flex items-center gap-4">
           <div className="px-4 py-2 bg-indigo-50 rounded-xl border border-indigo-100">
             <span className="text-[10px] font-black text-indigo-700 uppercase tracking-widest flex items-center gap-2">
-               <Clock size={12} /> Asia/Kolkata (GMT+5:30)
+               <Clock size={12} /> {DEFAULT_TIMEZONE}
             </span>
           </div>
         </div>

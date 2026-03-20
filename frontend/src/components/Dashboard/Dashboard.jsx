@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Calendar as CalendarIcon, Users, CheckCircle2, BookOpen, ExternalLink, MoreVertical } from 'lucide-react'
+import { Calendar as CalendarIcon, Users, CheckCircle2, BookOpen, ExternalLink, MoreVertical, Clock } from 'lucide-react'
 import { StatCard } from './StatCard'
 import { ClassItem } from './ClassItem'
 import { dayLabel, formatDate, getClassStatus } from '../../utils/dateUtils'

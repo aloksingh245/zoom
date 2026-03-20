@@ -1,4 +1,4 @@
-import { X, Plus, Clock, ChevronRight, Trash2 } from 'lucide-react'
+import { X, Plus, Clock, ChevronRight, Trash2, Mail } from 'lucide-react'
 
 export function ClassModal({ 
   isOpen, 
@@ -79,17 +79,31 @@ export function ClassModal({
               />
             </div>
             <div className="space-y-3">
-              <label className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Assignment Context</label>
-              <input
-                className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold text-slate-700 focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-500/5 transition-all outline-none"
-                placeholder="Project 4 submission details..."
-                value={form.assignment_name}
-                onChange={(e) => setForm({ ...form, assignment_name: e.target.value })}
-              />
+              <label className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Mentor Email (for Calendar)</label>
+              <div className="relative">
+                <input
+                  type="email"
+                  className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold text-slate-700 focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-500/5 transition-all outline-none"
+                  placeholder="mentor@example.com"
+                  value={form.mentor_email || ''}
+                  onChange={(e) => setForm({ ...form, mentor_email: e.target.value })}
+                />
+                <Mail size={18} className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-300" />
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="space-y-3">
+            <label className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Assignment Context</label>
+            <input
+              className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold text-slate-700 focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-500/5 transition-all outline-none"
+              placeholder="Project 4 submission details..."
+              value={form.assignment_name}
+              onChange={(e) => setForm({ ...form, assignment_name: e.target.value })}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="space-y-3">
               <label className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Scheduled Date</label>
               <input
@@ -110,8 +124,20 @@ export function ClassModal({
                   onChange={(e) => setForm({ ...form, start_time: e.target.value })}
                   required
                 />
-                <Clock size={18} className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-300" />
+                <Clock size={18} className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" />
               </div>
+            </div>
+            <div className="space-y-3">
+              <label className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Duration (Mins)</label>
+              <input
+                type="number"
+                min="15"
+                step="15"
+                className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-4 text-sm font-bold text-slate-700 focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-500/5 transition-all outline-none"
+                value={form.duration_minutes || 90}
+                onChange={(e) => setForm({ ...form, duration_minutes: parseInt(e.target.value) || 90 })}
+                required
+              />
             </div>
           </div>
 
@@ -119,7 +145,7 @@ export function ClassModal({
             <div className="p-3 bg-white rounded-2xl shadow-sm text-indigo-600"><Clock size={24} /></div>
             <div>
                <p className="text-sm font-black">Automatic Session Window</p>
-               <p className="text-xs font-medium opacity-80">Duration is hardcoded to 1.5 hours for consistency across batches.</p>
+               <p className="text-xs font-medium opacity-80">Duration and timezones are synced with Zoom and Google Calendar.</p>
             </div>
           </div>
         </div>

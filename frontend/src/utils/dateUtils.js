@@ -34,10 +34,12 @@ export function dayLabel(date) {
 export function getClassStatus(item) {
   try {
     const now = new Date()
-    const nowInTz = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }))
+    const tz = item.timezone || 'Asia/Kolkata'
+    const nowInTz = new Date(now.toLocaleString('en-US', { timeZone: tz }))
     
     const start = new Date(`${item.date}T${item.start_time}:00`)
-    const end = new Date(start.getTime() + SESSION_DURATION_MINS * 60000)
+    const duration = item.duration_minutes || SESSION_DURATION_MINS
+    const end = new Date(start.getTime() + duration * 60000)
 
     if (nowInTz < start) return 'upcoming'
     if (nowInTz >= start && nowInTz <= end) return 'live'
@@ -77,9 +79,9 @@ export function isPastLocal(dateStr, timeStr, timezone) {
   }
 }
 
-export function getEndTime(startTimeStr) {
+export function getEndTime(startTimeStr, durationMinutes = SESSION_DURATION_MINS) {
   const [h, mm] = startTimeStr.split(':').map(Number)
-  const total = h * 60 + mm + SESSION_DURATION_MINS
+  const total = h * 60 + mm + durationMinutes
   const eh = Math.floor(total / 60) % 24
   const em = total % 60
   return `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`
