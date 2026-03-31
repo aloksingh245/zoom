@@ -34,3 +34,5 @@ dist/
 build/
 *.egg-info/
 \n# Secrets\nbackend/token.json\nbackend/oauth_client.json\nbackend/*.json\nbackend/sql_app.db
+backend/token.json
+backend/oauth_client.json
