@@ -1,0 +1,40 @@
+# Zoom Class Scheduler Blueprint
+name: zoom-class-scheduler-crm
+
+services:
+  # Backend Deployment (FastAPI)
+  - type: web
+    name: zoom-scheduler-backend
+    env: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: TIMEZONE_DEFAULT
+        value: Asia/Kolkata
+      - key: ZOOM_ACCOUNT_ID
+        sync: false
+      - key: ZOOM_CLIENT_ID
+        sync: false
+      - key: ZOOM_CLIENT_SECRET
+        sync: false
+      - key: ZOOM_USER_ID
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+
+  # Frontend Deployment (React Static Site)
+  - type: static
+    name: zoom-scheduler-frontend
+    env: node
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    publishPath: dist
+    envVars:
+      - key: VITE_API_BASE
+        fromService:
+          type: web
+          name: zoom-scheduler-backend
+          property: host
