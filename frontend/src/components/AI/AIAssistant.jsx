@@ -6,7 +6,7 @@ import { chatWithAI } from '../../services/api'
 export function AIAssistant({ onSuggestAction }) {
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'Hi Vipul! I am your Zoom Scheduler AI. I can help you check for session conflicts, suggest time slots, or even draft a new session for you. How can I help today?' }
+    { role: 'assistant', content: 'Hi Alok! I am your Zoom Scheduler AI. I can help you check for session conflicts, suggest time slots, or even draft a new session for you. How can I help today?' }
   ])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)

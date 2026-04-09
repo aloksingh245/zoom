@@ -84,10 +84,10 @@ export function TopBar({ searchTerm, setSearchTerm, openCreate, syncClasses, loa
           className="flex items-center gap-4 cursor-pointer group"
         >
           <div className="text-right hidden sm:block">
-            <span className="text-sm font-black text-slate-800 dark:text-slate-100 block leading-none group-hover:text-blue-900 dark:group-hover:text-blue-400 transition-colors">Vipul Pawar</span>
+            <span className="text-sm font-black text-slate-800 dark:text-slate-100 block leading-none group-hover:text-blue-900 dark:group-hover:text-blue-400 transition-colors">Alok Kumar Singh</span>
             <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mt-1 block">Administrator</span>
           </div>
-          <div className="w-12 h-12 rounded-[1.2rem] bg-gradient-to-br from-blue-50 to-blue-100 dark:from-slate-800 dark:to-slate-700 text-blue-700 dark:text-blue-400 flex items-center justify-center text-sm font-black border-2 border-white dark:border-slate-600 shadow-sm group-hover:shadow-md transition-all">VP</div>
+          <div className="w-12 h-12 rounded-[1.2rem] bg-gradient-to-br from-blue-50 to-blue-100 dark:from-slate-800 dark:to-slate-700 text-blue-700 dark:text-blue-400 flex items-center justify-center text-sm font-black border-2 border-white dark:border-slate-600 shadow-sm group-hover:shadow-md transition-all">AS</div>
         </motion.div>
       </div>
     </header>

@@ -52,7 +52,7 @@ class AIService:
         courses_ctx = ", ".join([c.name for c in courses])
 
         system_prompt = f"""
-You are the Zoom Scheduler AI Assistant for Vipul Pawar. 
+You are the Zoom Scheduler AI Assistant for Alok Kumar Singh. 
 Today's Date: {current_date}
 
 Existing Batches: {courses_ctx}
