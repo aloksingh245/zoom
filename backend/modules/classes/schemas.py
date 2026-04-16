@@ -39,5 +39,7 @@ class ClassSession(BaseModel):
     calendar_event_id: Optional[str] = None
     mentor_email: Optional[str] = None
     sheet_row_id: Optional[str] = None
+    owner_id: Optional[str] = None
+    owner_name: Optional[str] = None
     created_at: datetime
     updated_at: datetime

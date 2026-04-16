@@ -3,8 +3,9 @@ import { cn } from '../../utils/cn'
 import { getClassStatus } from '../../utils/dateUtils'
 import { motion } from 'framer-motion'
 
-export function ClassItem({ item, onEdit, variants }) {
+export function ClassItem({ item, onEdit, variants, currentUser }) {
   const status = getClassStatus(item)
+  const isOwner = !item.owner_id || (currentUser && item.owner_id === currentUser.id)
   
   return (
     <motion.div 
@@ -32,17 +33,25 @@ export function ClassItem({ item, onEdit, variants }) {
            <p className="text-sm font-bold text-slate-500 dark:text-slate-400 truncate transition-colors">Course: <span className="text-slate-700 dark:text-slate-200">{item.course_name}</span></p>
            <span className="w-1.5 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full transition-colors"></span>
            <p className="text-sm font-black text-red-600 dark:text-red-400 transition-colors">{item.start_time}</p>
+           {item.owner_name && (
+             <>
+               <span className="w-1.5 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full transition-colors"></span>
+               <p className="text-sm font-bold text-slate-500 dark:text-slate-400 truncate transition-colors">By: <span className="text-slate-700 dark:text-slate-200">{item.owner_name}</span></p>
+             </>
+           )}
         </div>
       </div>
 
       <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300 translate-x-4 group-hover:translate-x-0">
-        <button 
-          onClick={() => onEdit(item)} 
-          className="p-3.5 text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-[1.2rem] transition-all active:scale-90"
-          title="Edit Details"
-        >
-          <Edit3 size={20} strokeWidth={2.5} />
-        </button>
+        {isOwner && (
+          <button 
+            onClick={() => onEdit(item)} 
+            className="p-3.5 text-slate-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-[1.2rem] transition-all active:scale-90"
+            title="Edit Details"
+          >
+            <Edit3 size={20} strokeWidth={2.5} />
+          </button>
+        )}
         <a 
           href={item.zoom_join_url} 
           target="_blank" 

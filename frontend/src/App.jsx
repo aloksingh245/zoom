@@ -6,6 +6,7 @@ import { Calendar } from './components/Calendar/Calendar'
 import { CourseList } from './components/Courses/CourseList'
 import { ClassModal } from './components/Modals/ClassModal'
 import { AIAssistant } from './components/AI/AIAssistant'
+import { AuthPage } from './components/Auth/AuthPage'
 import { AlertCircle, X } from 'lucide-react'
 import { useClasses } from './hooks/useClasses'
 import { useCourses } from './hooks/useCourses'
@@ -28,16 +29,8 @@ function emptyForm(date) {
 }
 
 export default function App() {
-  const [view, setView] = useState('dashboard')
-  const [searchTerm, setSearchTerm] = useState('')
-  const [weekAnchor, setWeekAnchor] = useState(new Date())
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editing, setEditing] = useState(null)
-  const [form, setForm] = useState(emptyForm(formatDate(new Date())))
-  const [localError, setLocalError] = useState('')
-  const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('theme') || 'light'
-  })
+  const [token, setToken] = useState(() => localStorage.getItem('token'))
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light')
 
   useEffect(() => {
     const root = window.document.documentElement
@@ -50,6 +43,47 @@ export default function App() {
   }, [theme])
 
   const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light')
+
+  const handleLogin = (newToken) => {
+    localStorage.setItem('token', newToken)
+    setToken(newToken)
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('token')
+    setToken(null)
+  }
+
+  if (!token) {
+    return <AuthPage onLogin={handleLogin} theme={theme} />
+  }
+
+  return <MainApp theme={theme} toggleTheme={toggleTheme} onLogout={handleLogout} token={token} />
+}
+
+function MainApp({ theme, toggleTheme, onLogout, token }) {
+  const [view, setView] = useState('dashboard')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [weekAnchor, setWeekAnchor] = useState(new Date())
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editing, setEditing] = useState(null)
+  const [form, setForm] = useState(emptyForm(formatDate(new Date())))
+  const [localError, setLocalError] = useState('')
+
+  const currentUser = useMemo(() => {
+    if (!token) return null;
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join(''));
+      return JSON.parse(jsonPayload);
+    } catch (e) {
+      console.error("Failed to parse token", e);
+      return null;
+    }
+  }, [token])
 
   const { 
     classes, 
@@ -135,13 +169,27 @@ export default function App() {
     
     if (autoSave) {
       try {
-        // Need to replicate handleSave logic but with the newForm directly
+        if (!newForm.course_id?.trim() && !newForm.course_name?.trim()) {
+          throw new Error('Course is required.')
+        }
+        if (!newForm.topic_name?.trim()) {
+          throw new Error('Topic name is required.')
+        }
+
         let payload = { ...newForm }
+        if (!payload.assignment_name?.trim()) delete payload.assignment_name;
+        if (!payload.mentor_email?.trim()) delete payload.mentor_email;
+
         if (!payload.course_id && payload.course_name) {
-          const created = await addCourse({ name: payload.course_name })
+          const created = await addCourse({ name: payload.course_name.trim() })
           payload.course_id = created.id
           delete payload.course_name
         }
+        
+        if (payload.course_id) {
+          delete payload.course_name;
+        }
+
         await addClass(payload)
       } catch (err) {
         setLocalError('AI Auto-schedule failed: ' + err.message)
@@ -155,7 +203,17 @@ export default function App() {
   async function handleSave(e) {
     e.preventDefault()
     setLocalError('')
-    
+
+    if (!form.course_id?.trim() && !form.course_name?.trim()) {
+      setLocalError('Please select a course or enter a new course name.')
+      return
+    }
+
+    if (!form.topic_name?.trim()) {
+      setLocalError('Please enter a session topic.')
+      return
+    }
+
     if (isPastLocal(form.date, form.start_time, form.timezone)) {
       setLocalError(`Start time must be in the future (${form.timezone}).`)
       return
@@ -163,15 +221,25 @@ export default function App() {
 
     try {
       let payload = { ...form }
+
+      // Clean up empty strings for optional fields
+      if (!payload.assignment_name?.trim()) delete payload.assignment_name;
+      if (!payload.mentor_email?.trim()) delete payload.mentor_email;
+
       if (!payload.course_id && payload.course_name) {
-        const existing = courses.find(c => c.name.toLowerCase() === payload.course_name.toLowerCase())
+        const existing = courses.find(c => c.name.toLowerCase() === payload.course_name.trim().toLowerCase())
         if (!existing) {
-          const created = await addCourse({ name: payload.course_name })
+          const created = await addCourse({ name: payload.course_name.trim() })
           payload.course_id = created.id
         } else {
           payload.course_id = existing.id
         }
         delete payload.course_name
+      }
+
+      // If course_id is set, ensure course_name is deleted just in case
+      if (payload.course_id) {
+        delete payload.course_name;
       }
 
       if (editing) {
@@ -184,7 +252,6 @@ export default function App() {
       setLocalError(err.message || 'Failed to save class')
     }
   }
-
   async function handleDelete() {
     if (!editing) return
     if (!window.confirm('Are you sure you want to delete this class? This will also remove the Zoom meeting.')) return
@@ -218,6 +285,8 @@ export default function App() {
           loading={classesLoading}
           theme={theme}
           toggleTheme={toggleTheme}
+          onLogout={onLogout}
+          currentUser={currentUser}
         />
 
         <div className="flex-1 overflow-y-auto p-10 relative">
@@ -254,6 +323,7 @@ export default function App() {
                   setView={setView}
                   openEdit={openEdit}
                   openCreate={openCreate}
+                  currentUser={currentUser}
                 />
               )}
 
@@ -265,6 +335,7 @@ export default function App() {
                   classesByDate={classesByDate}
                   openCreate={openCreate}
                   openEdit={openEdit}
+                  currentUser={currentUser}
                 />
               )}
 
@@ -286,6 +357,7 @@ export default function App() {
         setForm={setForm}
         courses={courses}
         loading={classesLoading || coursesLoading}
+        currentUser={currentUser}
       />
 
       <AIAssistant onSuggestAction={handleAISuggestion} />

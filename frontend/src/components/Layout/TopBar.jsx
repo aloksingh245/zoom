@@ -1,8 +1,8 @@
 import { useState } from 'react'
-import { Search, Plus, RotateCw, Sun, Moon } from 'lucide-react'
+import { Search, Plus, RotateCw, Sun, Moon, LogOut } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 
-export function TopBar({ searchTerm, setSearchTerm, openCreate, syncClasses, loading, theme, toggleTheme }) {
+export function TopBar({ searchTerm, setSearchTerm, openCreate, syncClasses, loading, theme, toggleTheme, onLogout, currentUser }) {
   const [isSyncing, setIsSyncing] = useState(false)
   const [isSearchFocused, setIsSearchFocused] = useState(false)
 
@@ -17,6 +17,11 @@ export function TopBar({ searchTerm, setSearchTerm, openCreate, syncClasses, loa
     } finally {
       setIsSyncing(false)
     }
+  }
+
+  const getInitials = (name) => {
+    if (!name) return 'U'
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
   }
 
   return (
@@ -84,11 +89,21 @@ export function TopBar({ searchTerm, setSearchTerm, openCreate, syncClasses, loa
           className="flex items-center gap-4 cursor-pointer group"
         >
           <div className="text-right hidden sm:block">
-            <span className="text-sm font-black text-slate-800 dark:text-slate-100 block leading-none group-hover:text-blue-900 dark:group-hover:text-blue-400 transition-colors">Alok Kumar Singh</span>
-            <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mt-1 block">Administrator</span>
+            <span className="text-sm font-black text-slate-800 dark:text-slate-100 block leading-none group-hover:text-blue-900 dark:group-hover:text-blue-400 transition-colors">{currentUser?.name || 'User'}</span>
+            <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mt-1 block">Instructor</span>
           </div>
-          <div className="w-12 h-12 rounded-[1.2rem] bg-gradient-to-br from-blue-50 to-blue-100 dark:from-slate-800 dark:to-slate-700 text-blue-700 dark:text-blue-400 flex items-center justify-center text-sm font-black border-2 border-white dark:border-slate-600 shadow-sm group-hover:shadow-md transition-all">AS</div>
+          <div className="w-12 h-12 rounded-[1.2rem] bg-gradient-to-br from-blue-50 to-blue-100 dark:from-slate-800 dark:to-slate-700 text-blue-700 dark:text-blue-400 flex items-center justify-center text-sm font-black border-2 border-white dark:border-slate-600 shadow-sm group-hover:shadow-md transition-all">{getInitials(currentUser?.name)}</div>
         </motion.div>
+
+        <motion.button 
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={onLogout}
+          title="Log Out"
+          className="p-3 ml-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-2xl transition-all shadow-sm hover:shadow-md"
+        >
+          <LogOut size={20} />
+        </motion.button>
       </div>
     </header>
   )

@@ -5,7 +5,7 @@ import { ClassItem } from './ClassItem'
 import { dayLabel, formatDate, getClassStatus } from '../../utils/dateUtils'
 import { motion } from 'framer-motion'
 
-export function Dashboard({ classes, todayClasses, courses, setView, openEdit, openCreate }) {
+export function Dashboard({ classes, todayClasses, courses, setView, openEdit, openCreate, currentUser }) {
   const upcomingClasses = useMemo(() => 
     classes
       .filter(c => getClassStatus(c) === 'upcoming')
@@ -69,7 +69,7 @@ export function Dashboard({ classes, todayClasses, courses, setView, openEdit, o
             className="space-y-4"
           >
             {todayClasses.length > 0 ? todayClasses.map(c => (
-              <ClassItem key={c.id} item={c} onEdit={openEdit} variants={itemVariants} />
+              <ClassItem key={c.id} item={c} onEdit={openEdit} variants={itemVariants} currentUser={currentUser} />
             )) : (
               <div className="text-center py-20 bg-slate-50/50 rounded-[2rem] border-2 border-dashed border-slate-100">
                 <CalendarIcon size={64} className="mx-auto mb-4 text-slate-200" />

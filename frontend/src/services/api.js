@@ -1,21 +1,64 @@
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
 
+function getAuthHeaders() {
+  const token = localStorage.getItem('token')
+  if (token) {
+    return { 'Authorization': `Bearer ${token}` }
+  }
+  return {}
+}
+
 async function request(path, options = {}) {
   const resp = await fetch(`${API_BASE}${path}`, {
     headers: {
       'Content-Type': 'application/json',
+      ...getAuthHeaders(),
       ...(options.headers || {}),
     },
     ...options,
   })
 
   if (!resp.ok) {
-    const text = await resp.text()
+    // If unauthorized, clear token and maybe redirect
+    if (resp.status === 401) {
+      localStorage.removeItem('token')
+      window.location.reload()
+    }
+    
+    let text = ''
+    try {
+      const data = await resp.json()
+      text = data.detail || JSON.stringify(data)
+    } catch {
+      text = await resp.text()
+    }
+    
     throw new Error(text || `Request failed: ${resp.status}`)
   }
 
   if (resp.status === 204) return null
   return resp.json()
+}
+
+export async function requestOtp(payload) {
+  return request('/api/auth/request-otp', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  })
+}
+
+export async function signup(payload) {
+  return request('/api/auth/signup', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  })
+}
+
+export async function login(payload) {
+  return request('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  })
 }
 
 export async function listClasses() {

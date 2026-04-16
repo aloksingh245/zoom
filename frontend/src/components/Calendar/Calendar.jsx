@@ -5,7 +5,7 @@ import { cn } from '../../utils/cn'
 import { MeetingCard } from './MeetingCard'
 import { motion } from 'framer-motion'
 
-export function Calendar({ weekStart, weekAnchor, setWeekAnchor, classesByDate, openCreate, openEdit }) {
+export function Calendar({ weekStart, weekAnchor, setWeekAnchor, classesByDate, openCreate, openEdit, currentUser }) {
   const weekDays = Array.from({ length: 7 }, (_, idx) => {
     const d = new Date(weekStart)
     d.setDate(weekStart.getDate() + idx)
@@ -84,7 +84,7 @@ export function Calendar({ weekStart, weekAnchor, setWeekAnchor, classesByDate, 
               ))}
               
               {dayClasses.map(c => (
-                <MeetingCard key={c.id} item={c} onEdit={openEdit} />
+                <MeetingCard key={c.id} item={c} onEdit={openEdit} currentUser={currentUser} />
               ))}
             </div>
           )

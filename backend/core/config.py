@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     timezone_default: str = "Asia/Kolkata"
     class_duration_minutes: int = 90
 
+    # Auth / SMTP Configuration
+    smtp_email: str = Field("", alias="SMTP_EMAIL")
+    smtp_password: str = Field("", alias="SMTP_PASSWORD")
+
     # CORS Configuration
     cors_allow_origins: str = "*"
 

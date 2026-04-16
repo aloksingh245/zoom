@@ -93,7 +93,7 @@ class ClassService:
             raise HTTPException(status_code=404, detail="Class not found")
         return schemas.ClassSession.model_validate(db_class, from_attributes=True)
 
-    async def create_class(self, db: AsyncSession, payload: schemas.ClassCreate) -> schemas.ClassSession:
+    async def create_class(self, db: AsyncSession, payload: schemas.ClassCreate, user_id: Optional[str] = None, user_name: Optional[str] = None) -> schemas.ClassSession:
         course = await self._resolve_course(db, payload.course_id, payload.course_name)
         timezone = zoom_service.normalize_timezone(payload.timezone or settings.timezone_default)
         duration_minutes = payload.duration_minutes or settings.class_duration_minutes
@@ -138,6 +138,8 @@ class ClassService:
                 zoom_meeting_id=zoom_id,
                 zoom_join_url=zoom_url,
                 mentor_email=payload.mentor_email,
+                owner_id=user_id,
+                owner_name=user_name,
                 created_at=now,
                 updated_at=now,
             )
@@ -160,8 +162,12 @@ class ClassService:
             await db.rollback()
             raise HTTPException(status_code=500, detail="Failed to save class to database.")
 
-    async def update_class(self, db: AsyncSession, class_id: str, payload: schemas.ClassUpdate) -> schemas.ClassSession:
+    async def update_class(self, db: AsyncSession, class_id: str, payload: schemas.ClassUpdate, user_id: Optional[str] = None) -> schemas.ClassSession:
         existing = await self.get_class(db, class_id)
+        
+        # Check permissions
+        if existing.owner_id and user_id and existing.owner_id != user_id:
+            raise HTTPException(status_code=403, detail="You do not have permission to modify this class")
         
         course = None
         if payload.course_id or payload.course_name:
@@ -220,8 +226,12 @@ class ClassService:
             await db.rollback()
             raise HTTPException(status_code=500, detail="Failed to update class")
 
-    async def delete_class(self, db: AsyncSession, class_id: str) -> None:
+    async def delete_class(self, db: AsyncSession, class_id: str, user_id: Optional[str] = None) -> None:
         existing = await self.get_class(db, class_id)
+        
+        # Check permissions
+        if existing.owner_id and user_id and existing.owner_id != user_id:
+            raise HTTPException(status_code=403, detail="You do not have permission to delete this class")
         
         try:
             await zoom_service.delete_meeting(meeting_id=existing.zoom_meeting_id)

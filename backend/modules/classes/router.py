@@ -2,6 +2,7 @@ from typing import List
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import get_db
+from core.security import get_current_user_token
 from modules.classes import schemas
 from modules.classes.service import class_service
 
@@ -16,12 +17,21 @@ async def get_class(class_id: str, db: AsyncSession = Depends(get_db)):
     return await class_service.get_class(db, class_id)
 
 @router.post("", response_model=schemas.ClassSession)
-async def create_class(payload: schemas.ClassCreate, db: AsyncSession = Depends(get_db)):
-    return await class_service.create_class(db, payload)
+async def create_class(
+    payload: schemas.ClassCreate, 
+    db: AsyncSession = Depends(get_db),
+    user_token: dict = Depends(get_current_user_token)
+):
+    return await class_service.create_class(db, payload, user_id=user_token.get("id"), user_name=user_token.get("name"))
 
 @router.put("/{class_id}", response_model=schemas.ClassSession)
-async def update_class(class_id: str, payload: schemas.ClassUpdate, db: AsyncSession = Depends(get_db)):
-    return await class_service.update_class(db, class_id, payload)
+async def update_class(
+    class_id: str, 
+    payload: schemas.ClassUpdate, 
+    db: AsyncSession = Depends(get_db),
+    user_token: dict = Depends(get_current_user_token)
+):
+    return await class_service.update_class(db, class_id, payload, user_id=user_token.get("id"))
 
 @router.post("/sync")
 async def sync_classes(db: AsyncSession = Depends(get_db)):
@@ -32,6 +42,10 @@ async def sync_with_calendar(db: AsyncSession = Depends(get_db)):
     return await class_service.sync_with_calendar(db)
 
 @router.delete("/{class_id}")
-async def delete_class(class_id: str, db: AsyncSession = Depends(get_db)):
-    await class_service.delete_class(db, class_id)
+async def delete_class(
+    class_id: str, 
+    db: AsyncSession = Depends(get_db),
+    user_token: dict = Depends(get_current_user_token)
+):
+    await class_service.delete_class(db, class_id, user_id=user_token.get("id"))
     return {"deleted": True}

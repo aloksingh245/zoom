@@ -46,7 +46,7 @@ class AIService:
         # 2. Build Context
         current_date = datetime.now().strftime("%Y-%m-%d (%A)")
         classes_ctx = "\n".join([
-            f"- {c.date} at {c.start_time}: {c.topic_name} (Course: {c.course_name})" 
+            f"- {c.date} at {c.start_time}: {c.topic_name} (Course: {c.course_name})" + (f" [Shared with: {c.mentor_email}]" if c.mentor_email else "")
             for c in classes
         ])
         courses_ctx = ", ".join([c.name for c in courses])
@@ -67,8 +67,10 @@ Goals:
 
 DIRECT SCHEDULING RULE:
 If you have all details to schedule a class (Course Name, Topic, Date, Time), end your response with:
-ACTION_JSON: {{"course_name": "...", "topic_name": "...", "date": "YYYY-MM-DD", "start_time": "HH:MM", "duration_minutes": 90}}
+ACTION_JSON: {{"course_name": "...", "topic_name": "...", "date": "YYYY-MM-DD", "start_time": "HH:MM", "duration_minutes": 90, "mentor_email": "..."}}
 AUTO_EXECUTE: true
+
+Note: If the user provides ANY email address (like a mentor's email, a guest's email, or says something like 'mentor gmail is ...'), you MUST include it in the "mentor_email" field of the JSON. If none is provided, omit the "mentor_email" field.
 
 If you are just suggesting or drafting (info is partial), use:
 ACTION_JSON: {{...}}
