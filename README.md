@@ -1,123 +1,131 @@
-# 🚀 Zoom Scheduler CRM & AI Assistant
+# 🗓️ Zoom Class Scheduler POC
 
-A modern, high-performance Class Scheduler CRM designed for educators, mentors, and administrators. This application acts as a centralized command center to schedule sessions, automatically generate Zoom meetings, invite mentors via Google Calendar, and log records into Google Sheets—all powered by a decoupled, event-driven backend and a gorgeous, animated React frontend. 
-
-Additionally, it features an integrated **AI Assistant** (powered by Groq & LLaMA 3.1) capable of natural language processing to automatically schedule and resolve timeline conflicts.
-
-![UI-Modern & Animated](https://img.shields.io/badge/UI-Modern%20%26%20Animated-blue)
-![Theme-Light & Dark Mode](https://img.shields.io/badge/Theme-Light%20%26%20Dark%20Mode-blueviolet)
-![Architecture-Event Driven](https://img.shields.io/badge/Architecture-Event%20Driven-success)
+A sophisticated, full-stack Class Scheduling system featuring real-time **Zoom Integration**, **AI-Powered Scheduling**, and **Secure Multi-User Authentication**. Built with a professional event-driven architecture.
 
 ---
 
-## ✨ Key Features
+## 🚀 Key Features
 
-### 🤖 AI-Powered Scheduling
-*   **Integrated Groq AI (LLaMA 3.1):** A floating AI chat assistant helps you manage schedules through natural language.
-*   **Auto-Execution:** The AI can extract entities (Course, Topic, Date, Time) from conversational text, check for scheduling conflicts, and automatically dispatch a creation payload to the backend without manual form filling.
-
-### ⚙️ Event-Driven Backend Architecture
-*   **Decoupled Integrations:** Core business logic is isolated from third-party APIs using an asynchronous `EventBus`. When a class is created, `class_created` events fire off background tasks.
-*   **Automated Zoom Sync:** Creates, updates, and deletes Zoom meetings dynamically via Server-to-Server OAuth. Includes a bidirectional sync endpoint to fetch manually created Zoom meetings.
-*   **Google Ecosystem Integrations:**
-    *   **Google Calendar:** Automatically sends invites/updates to assigned mentors based on timezone-aware scheduling.
-    *   **Google Sheets:** Automatically appends scheduled class logs for administrative auditing.
-*   **Resilience:** API calls to external services are fortified with custom async retry decorators and exponential backoff mechanisms.
-
-### 🎨 Premium Frontend Experience
-*   **Fluid Animations:** Built with `framer-motion` for staggered list rendering, smooth page transitions, and interactive hover states.
-*   **Custom Calendar View:** A bespoke, timezone-aware week-view calendar grid that visualizes class durations, overlaps, and current time blocks.
-*   **Theming:** Full dark/light mode persistence with automatic Tailwind v4 styling integration.
+- **🔐 Multi-User Authentication**: Complete Signup/Login flow with real-world **Email OTP Verification** (Gmail SMTP).
+- **🛡️ Ownership Protection**: Shared visibility calendar where users can see all classes but **only the creator** can edit or delete them.
+- **📹 Zoom Integration**: Automatic creation, updating, and deletion of Zoom Meetings synchronized with the app.
+- **🤖 AI Scheduler**: LLaMA 3.1 powered assistant that understands natural language to schedule classes instantly.
+- **📅 Visual Calendar**: Beautiful week-view grid with real-time status indicators (Live, Upcoming, Completed).
+- **🔄 Google Sync**: Background synchronization with Google Calendar and Google Sheets via an internal Event Bus.
 
 ---
 
-## 🛠️ Tech Stack
+## 🏗️ Technical Architecture
 
-### Frontend (`@frontend`)
-*   **Framework:** React 19 + Vite
-*   **Styling:** Tailwind CSS v4 + Tailwind Merge + clsx
-*   **Animations:** Framer Motion
-*   **Icons:** Lucide React
-*   **Routing & State:** Custom React Hooks (`useClasses`, `useCourses`)
+### **Backend (FastAPI)**
+The backend follows a decoupled, event-driven design:
+- **Core Path**: Synchronous CRUD operations and Zoom API communication.
+- **Event Bus**: An internal publisher-subscriber system that triggers side effects (GCal/Sheets sync) without blocking the main request.
+- **Security**: JWT (JSON Web Token) based stateless authentication with Bcrypt password hashing.
 
-### Backend (`@backend`)
-*   **Framework:** FastAPI (Python 3.11+)
-*   **Database:** SQLite + `aiosqlite` + SQLAlchemy 2.0 (Async Session paradigm)
-*   **AI:** Groq Cloud API (`llama-3.1-8b-instant`)
-*   **Integrations:** Zoom API v2, Google API Client (`aiogoogle`, `google-auth`)
-*   **Validation:** Pydantic V2
+### **Frontend (React + Vite + Tailwind)**
+- **State Management**: Custom React hooks (`useClasses`, `useCourses`) for clean logic separation.
+- **UI Components**: Framer Motion animations, Lucide icons, and a responsive glassmorphic design.
 
 ---
 
-## 🚀 Installation & Setup
+## 🗄️ Database Schema (SQLite)
 
-### Prerequisites
-*   Node.js 20+
-*   Python 3.10+
-*   [uv](https://github.com/astral-sh/uv) (optional but recommended for fast Python package installation)
+The system uses SQLAlchemy with `aiosqlite` for asynchronous database operations.
+
+### **Users Table**
+| Column | Type | Description |
+| :--- | :--- | :--- |
+| `id` | UUID (String) | Primary Key |
+| `name` | String | User's full name |
+| `email` | String | Unique email address |
+| `hashedPassword` | String | Bcrypt hashed password |
+| `isVerified` | Boolean | True after OTP success |
+
+### **Classes Table**
+| Column | Type | Description |
+| :--- | :--- | :--- |
+| `id` | UUID (String) | Primary Key |
+| `topic_name` | String | Title of the class |
+| `zoom_join_url` | String | Direct link to Zoom |
+| `owner_id` | String | Foreign Key to User ID |
+| `mentor_email` | String | Optional guest email |
+| `date / start_time` | String | ISO formatted timing |
+
+---
+
+## 🔌 Integrations & API Keys
+
+To run this project, configure the following keys in `backend/.env`:
+
+| Service | Key Needed | Purpose |
+| :--- | :--- | :--- |
+| **Zoom** | `ZOOM_CLIENT_ID`, `SECRET` | Server-to-Server OAuth for meetings |
+| **Groq** | `GROQ_API_KEY` | Powers the LLaMA 3.1 AI Assistant |
+| **Gmail** | `SMTP_PASSWORD` | Sends real OTP emails (App Password) |
+| **Google** | `credentials.json` | Google Calendar & Sheets API access |
+
+---
+
+## 🛠️ Setup Instructions
 
 ### 1. Backend Setup
-
-Navigate to the backend directory and set up the Python environment:
 ```bash
 cd backend
 python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+source .venv/bin/activate
 pip install -r requirements.txt
-```
-
-**Environment Variables:**
-Create a `.env` file in the `backend/` directory using `.env.example` as a template:
-```env
-ZOOM_ACCOUNT_ID=your_zoom_account_id
-ZOOM_CLIENT_ID=your_zoom_client_id
-ZOOM_CLIENT_SECRET=your_zoom_client_secret
-ZOOM_USER_ID=your_zoom_email@domain.com
-TIMEZONE_DEFAULT=Asia/Kolkata
-CORS_ALLOW_ORIGINS=http://localhost:5173
-GROQ_API_KEY=your_groq_api_key
-```
-
-**Google Credentials (OAuth & Service Account):**
-1. Ensure you have your `oauth_client.json` (Desktop App format) for Google Calendar inside the `backend/` folder.
-2. Run the manual auth script once to generate `token.json`:
-   ```bash
-   python google_auth.py
-   ```
-3. *(Optional)* Add `credentials.json` (Service Account) to the backend root to enable Google Sheets logging.
-
-**Start the Backend Server:**
-```bash
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+# Configure .env with your keys
+python main.py
 ```
 
 ### 2. Frontend Setup
-
-Navigate to the frontend directory:
 ```bash
 cd frontend
 npm install
-```
-
-**Start the Frontend Server:**
-```bash
 npm run dev
 ```
 
-Your frontend should now be running on `http://localhost:5173`.
-
 ---
 
-## 🧪 Testing
+## 📝 Demo Example: AI Scheduling
 
-The backend includes a suite of tests for ensuring integration reliability and checking conflict resolution algorithms.
-```bash
-cd backend
-pytest -v
+**User Chat:**
+> "Hey, schedule a Physics class for tomorrow at 5 PM. Mentor email is alok@example.com"
+
+**AI Action (Internal JSON):**
+```json
+{
+  "course_name": "Physics",
+  "topic_name": "Introduction",
+  "date": "2026-04-15",
+  "start_time": "17:00",
+  "mentor_email": "alok@example.com",
+  "AUTO_EXECUTE": true
+}
 ```
-Included tests cover: Timezone overlaps (`test_timezone_conflicts.py`), Google Calendar rollbacks (`test_rollback.py`), Event Bus behavior (`test_event_bus.py`), and API credentials (`test_zoom_creds.py`).
+**Result:**
+1. User receives a 200 OK.
+2. Zoom Meeting is created instantly.
+3. Google Calendar invite is sent to `alok@example.com` in the background.
+4. Meeting appears on the visual calendar for all users.
 
 ---
 
-## 📝 License
-This project is open-source and available under the [MIT License](LICENSE).
+## 📂 Project Structure
+```text
+├── backend/
+│   ├── core/           # Security, Database config, Event Bus
+│   ├── integrations/   # Zoom, GCal, Google Sheets clients
+│   ├── modules/        # Auth, Classes, Courses, AI logic
+│   ├── tests/          # Automated test suite
+│   └── main.py         # Entry point
+└── frontend/
+    ├── src/
+    │   ├── components/ # Atomic UI components (Calendar, Auth, AI)
+    │   ├── hooks/      # Business logic hooks
+    │   └── services/   # API communication layer
+```
+
+---
+*Created as a professional POC for high-efficiency educational scheduling.*
