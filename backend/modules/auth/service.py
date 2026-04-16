@@ -52,7 +52,7 @@ class AuthService:
 
         # Generate 6-digit OTP
         otp_code = f"{random.randint(0, 999999):06d}"
-        expires_at = datetime.utcnow() + timedelta(minutes=10)
+        expires_at = datetime.utcnow() + timedelta(minutes=3)
 
         # Remove old OTPs for this email
         await db.execute(delete(OTP).where(OTP.email == payload.email))
@@ -64,7 +64,7 @@ class AuthService:
 
         # Send OTP
         subject = "Your Verification Code"
-        body = f"Hello {payload.name},\n\nYour 6-digit OTP for signup is: {otp_code}\n\nThis code will expire in 10 minutes.\n\nThank you!"
+        body = f"Hello {payload.name},\n\nYour 6-digit OTP for signup is: {otp_code}\n\nThis code will expire in 3 minutes.\n\nThank you!"
         self._send_email(payload.email, subject, body)
 
         return {"message": "OTP sent successfully (check server logs if SMTP is not configured)"}

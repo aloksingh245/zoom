@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { requestOtp, signup, login } from '../../services/api'
 import { AlertCircle, Lock, Mail, User, ShieldCheck } from 'lucide-react'
 
@@ -8,6 +8,30 @@ export function AuthPage({ onLogin, theme }) {
   const [form, setForm] = useState({ name: '', email: '', password: '', otp: '' })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [timeLeft, setTimeLeft] = useState(180) // 3 minutes
+
+  useEffect(() => {
+    if (!isLogin && step === 2 && timeLeft > 0) {
+      const timerId = setInterval(() => {
+        setTimeLeft((prev) => prev - 1)
+      }, 1000)
+      return () => clearInterval(timerId)
+    }
+  }, [isLogin, step, timeLeft])
+
+  const handleRequestOtp = async () => {
+    setError('')
+    setLoading(true)
+    try {
+      await requestOtp({ name: form.name, email: form.email })
+      setStep(2)
+      setTimeLeft(180)
+    } catch (err) {
+      setError(err.message || 'Failed to resend OTP')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -22,6 +46,7 @@ export function AuthPage({ onLogin, theme }) {
         if (step === 1) {
           await requestOtp({ name: form.name, email: form.email })
           setStep(2)
+          setTimeLeft(180)
         } else {
           await signup({ name: form.name, email: form.email, password: form.password, otp: form.otp })
           setIsLogin(true)
@@ -35,6 +60,12 @@ export function AuthPage({ onLogin, theme }) {
     } finally {
       setLoading(false)
     }
+  }
+
+  const formatTime = (seconds) => {
+    const m = Math.floor(seconds / 60)
+    const s = seconds % 60
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
   }
 
   return (
@@ -110,7 +141,12 @@ export function AuthPage({ onLogin, theme }) {
 
           {!isLogin && step === 2 && (
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">OTP Code</label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">OTP Code</label>
+                <span className={`text-xs font-bold ${timeLeft > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-500'}`}>
+                  {formatTime(timeLeft)}
+                </span>
+              </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
                   <ShieldCheck size={18} />
@@ -122,6 +158,18 @@ export function AuthPage({ onLogin, theme }) {
                   placeholder="123456"
                 />
               </div>
+              {timeLeft === 0 && (
+                <div className="mt-2 text-right">
+                  <button 
+                    type="button" 
+                    onClick={handleRequestOtp} 
+                    disabled={loading}
+                    className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline disabled:opacity-50"
+                  >
+                    Resend OTP
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
