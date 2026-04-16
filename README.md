@@ -1,21 +1,21 @@
-# 🗓️ Zoom Class Scheduler POC
+#  Zoom Class Scheduler POC
 
 A sophisticated, full-stack Class Scheduling system featuring real-time **Zoom Integration**, **AI-Powered Scheduling**, and **Secure Multi-User Authentication**. Built with a professional event-driven architecture.
 
 ---
 
-## 🚀 Key Features
+##  Key Features
 
-- **🔐 Multi-User Authentication**: Complete Signup/Login flow with real-world **Email OTP Verification** (Gmail SMTP).
-- **🛡️ Ownership Protection**: Shared visibility calendar where users can see all classes but **only the creator** can edit or delete them.
-- **📹 Zoom Integration**: Automatic creation, updating, and deletion of Zoom Meetings synchronized with the app.
-- **🤖 AI Scheduler**: LLaMA 3.1 powered assistant that understands natural language to schedule classes instantly.
-- **📅 Visual Calendar**: Beautiful week-view grid with real-time status indicators (Live, Upcoming, Completed).
-- **🔄 Google Sync**: Background synchronization with Google Calendar and Google Sheets via an internal Event Bus.
+- ** Multi-User Authentication**: Complete Signup/Login flow with real-world **Email OTP Verification** (Gmail SMTP).
+- ** Ownership Protection**: Shared visibility calendar where users can see all classes but **only the creator** can edit or delete them.
+- ** Zoom Integration**: Automatic creation, updating, and deletion of Zoom Meetings synchronized with the app.
+- ** AI Scheduler**: LLaMA 3.1 powered assistant that understands natural language to schedule classes instantly.
+- ** Visual Calendar**: Beautiful week-view grid with real-time status indicators (Live, Upcoming, Completed).
+- ** Google Sync**: Background synchronization with Google Calendar and Google Sheets via an internal Event Bus.
 
 ---
 
-## 🏗️ Technical Architecture
+##  Technical Architecture
 
 ### **Backend (FastAPI)**
 The backend follows a decoupled, event-driven design:
@@ -29,7 +29,7 @@ The backend follows a decoupled, event-driven design:
 
 ---
 
-## 🗄️ Database Schema (SQLite)
+##  Database Schema (SQLite)
 
 The system uses SQLAlchemy with `aiosqlite` for asynchronous database operations.
 
@@ -54,7 +54,7 @@ The system uses SQLAlchemy with `aiosqlite` for asynchronous database operations
 
 ---
 
-## 🔌 Integrations & API Keys
+##  Integrations & API Keys
 
 To run this project, configure the following keys in `backend/.env`:
 
@@ -67,7 +67,7 @@ To run this project, configure the following keys in `backend/.env`:
 
 ---
 
-## 🛠️ Setup Instructions
+##  Setup Instructions
 
 ### 1. Backend Setup
 ```bash
@@ -88,7 +88,7 @@ npm run dev
 
 ---
 
-## 📝 Demo Example: AI Scheduling
+##  Demo Example: AI Scheduling
 
 **User Chat:**
 > "Hey, schedule a Physics class for tomorrow at 5 PM. Mentor email is alok@example.com"
@@ -112,7 +112,7 @@ npm run dev
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 ```text
 ├── backend/
 │   ├── core/           # Security, Database config, Event Bus
