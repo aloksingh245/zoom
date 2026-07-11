@@ -1,6 +1,7 @@
 import logging
 import json
 import os
+import base64
 from typing import Optional, List, Dict, Any
 from aiogoogle import Aiogoogle
 from aiogoogle.auth.creds import ServiceAccountCreds
@@ -13,17 +14,68 @@ class SheetsService:
     
     def __init__(self):
         self._creds = None
-        if os.path.exists(settings.google_credentials_file):
-            with open(settings.google_credentials_file) as f:
-                key_data = json.load(f)
-                self._creds = ServiceAccountCreds(
-                    scopes=[
-                        "https://www.googleapis.com/auth/spreadsheets"
-                    ],
-                    **key_data
-                )
+        key_data = self._load_credentials()
+        if key_data:
+            self._creds = ServiceAccountCreds(
+                scopes=[
+                    "https://www.googleapis.com/auth/spreadsheets"
+                ],
+                **key_data
+            )
         else:
-            logger.warning(f"Google credentials file not found at {settings.google_credentials_file}. Sheets will run in STUB mode.")
+            logger.warning("Google credentials not found. Sheets will run in STUB mode.")
+
+    def _load_credentials(self) -> Optional[dict]:
+        """Load Google service account credentials from env var (preferred) or file (fallback)."""
+        # 1. Prefer base64-encoded env var
+        if settings.google_credentials_b64:
+            try:
+                return json.loads(base64.b64decode(settings.google_credentials_b64))
+            except Exception as e:
+                logger.error(f"Failed to decode GOOGLE_CREDENTIALS_B64: {e}")
+
+        # 2. Fall back to JSON file
+        if settings.google_credentials_file and os.path.exists(settings.google_credentials_file):
+            with open(settings.google_credentials_file) as f:
+                return json.load(f)
+
+        return None
+
+    async def initialize_headers(self) -> None:
+        """Write the header row to Sheet1!A1:M1 if not already present."""
+        if not self._creds or not settings.google_sheet_id:
+            return
+        
+        headers = [
+            "Log Timestamp", "Class ID", "Course/Batch", "Topic", 
+            "Mentor Email", "Date", "Start Time", "Duration (Mins)", 
+            "Timezone", "Zoom Meeting ID", "Zoom Link", "Assignment/Agenda", "Status"
+        ]
+        
+        try:
+            async with Aiogoogle(service_account_creds=self._creds) as aiogoogle:
+                sheets_v4 = await aiogoogle.discover("sheets", "v4")
+                # First check if A1 is empty or has headers
+                resp = await aiogoogle.as_service_account(
+                    sheets_v4.spreadsheets.values.get(
+                        spreadsheetId=settings.google_sheet_id,
+                        range='Sheet1!A1:M1'
+                    )
+                )
+                values = resp.get('values', [])
+                if not values:
+                    # Sheet is empty, write headers
+                    await aiogoogle.as_service_account(
+                        sheets_v4.spreadsheets.values.update(
+                            spreadsheetId=settings.google_sheet_id,
+                            range='Sheet1!A1',
+                            valueInputOption='RAW',
+                            json={'values': [headers]}
+                        )
+                    )
+                    logger.info("Google Sheet headers initialized.")
+        except Exception as e:
+            logger.error(f"Failed to initialize Sheet headers: {e}")
 
     async def append_row(self, row_data: List[Any]) -> str:
         """Append a new log row to the Google Sheet."""

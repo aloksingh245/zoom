@@ -1,32 +1,38 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr
+from typing import Optional
 from datetime import datetime
 
-class RequestOTP(BaseModel):
-    name: str = Field(..., min_length=1)
+class UserBase(BaseModel):
     email: EmailStr
 
-class VerifyOTP(BaseModel):
-    email: EmailStr
-    otp: str = Field(..., min_length=6, max_length=6)
+class UserCreate(UserBase):
+    password: str
+    role: Optional[str] = "admin" # Defaults to admin, but client can pass mentor or student if desired
 
-class SignupRequest(BaseModel):
-    name: str = Field(..., min_length=1)
-    email: EmailStr
-    otp: str = Field(..., min_length=6, max_length=6)
-    password: str = Field(..., min_length=6)
-
-class LoginRequest(BaseModel):
-    email: EmailStr
+class UserLogin(UserBase):
     password: str
 
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    user: dict
-
-class UserResponse(BaseModel):
+class UserOut(UserBase):
     id: str
-    name: str
-    email: str
+    role: str
     is_verified: bool
     created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    email: Optional[str] = None
+    role: Optional[str] = None
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+

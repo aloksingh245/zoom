@@ -89,20 +89,12 @@ class ZoomService:
         date: str, 
         start_time: str, 
         timezone: str, 
-        duration: int = 90,
-        mentor_email: str | None = None
+        duration: int = 90
     ) -> Dict[str, Any]:
         self.ensure_configured()
         timezone = self.normalize_timezone(timezone)
         access_token = await self.get_access_token()
         
-        settings_dict = {
-            "host_video": True,
-            "participant_video": True,
-            "join_before_host": False,
-            "mute_upon_entry": True
-        }
-
         payload = {
             "topic": topic,
             "agenda": agenda or "",
@@ -110,7 +102,6 @@ class ZoomService:
             "start_time": self._build_start_time(date, start_time),
             "duration": duration,
             "timezone": timezone,
-            "settings": settings_dict
         }
         
         async with httpx.AsyncClient(timeout=20) as client:
@@ -134,20 +125,12 @@ class ZoomService:
         date: str, 
         start_time: str, 
         timezone: str, 
-        duration: int = 90,
-        mentor_email: str | None = None
+        duration: int = 90
     ) -> None:
         self.ensure_configured()
         timezone = self.normalize_timezone(timezone)
         access_token = await self.get_access_token()
         
-        settings_dict = {
-            "host_video": True,
-            "participant_video": True,
-            "join_before_host": False,
-            "mute_upon_entry": True
-        }
-
         payload = {
             "topic": topic,
             "agenda": agenda or "",
@@ -155,7 +138,6 @@ class ZoomService:
             "start_time": self._build_start_time(date, start_time),
             "duration": duration,
             "timezone": timezone,
-            "settings": settings_dict
         }
         
         async with httpx.AsyncClient(timeout=20) as client:

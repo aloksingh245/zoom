@@ -3,60 +3,55 @@ import { HOURS, DEFAULT_TIMEZONE } from '../../constants'
 import { formatDate, dayLabel, formatHour } from '../../utils/dateUtils'
 import { cn } from '../../utils/cn'
 import { MeetingCard } from './MeetingCard'
-import { motion } from 'framer-motion'
 
-export function Calendar({ weekStart, weekAnchor, setWeekAnchor, classesByDate, openCreate, openEdit, currentUser }) {
+export function Calendar({ weekStart, weekAnchor, setWeekAnchor, classesByDate, openCreate, openEdit, userRole = 'admin' }) {
   const weekDays = Array.from({ length: 7 }, (_, idx) => {
     const d = new Date(weekStart)
     d.setDate(weekStart.getDate() + idx)
     return d
   })
 
+  const isReadOnly = userRole !== 'admin'
+
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-[3rem] border border-white dark:border-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none overflow-hidden flex flex-col h-full transition-colors duration-500"
-    >
-      <div className="p-8 border-b border-slate-100/50 dark:border-slate-800/50 flex items-center justify-between bg-white/50 dark:bg-slate-900/50 sticky top-0 z-20 transition-colors">
+    <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-200/40 overflow-hidden animate-in fade-in duration-700">
+      <div className="p-10 border-b border-slate-50 flex items-center justify-between bg-white sticky top-0 z-20">
         <div className="flex items-center gap-8">
           <div>
-            <h2 className="text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight transition-colors">{new Date(weekStart).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h2>
-            <p className="text-sm font-bold text-slate-400 dark:text-slate-500 mt-1 transition-colors">Viewing Week: {dayLabel(weekStart)} - {dayLabel(new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000))}</p>
+            <h2 className="text-3xl font-black text-slate-900 tracking-tight">{new Date(weekStart).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h2>
+            <p className="text-sm font-bold text-slate-400 mt-1">Viewing Week: {dayLabel(weekStart)} - {dayLabel(new Date(weekStart.getTime() + 6 * 24 * 60 * 60 * 1000))}</p>
           </div>
-          <div className="flex bg-slate-50/80 dark:bg-slate-800/80 p-1.5 rounded-2xl border border-slate-100/50 dark:border-slate-700/50 backdrop-blur-sm transition-colors">
-            <button onClick={() => setWeekAnchor(new Date(weekAnchor.setDate(weekAnchor.getDate() - 7)))} className="p-2.5 hover:bg-white dark:hover:bg-slate-700 hover:shadow-sm rounded-xl transition-all text-slate-600 dark:text-slate-400 active:scale-95"><ChevronLeft size={20} /></button>
-            <button onClick={() => setWeekAnchor(new Date())} className="px-6 py-2.5 text-xs font-black text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 hover:shadow-sm rounded-xl transition-all uppercase tracking-widest active:scale-95">Today</button>
-            <button onClick={() => setWeekAnchor(new Date(weekAnchor.setDate(weekAnchor.getDate() + 7)))} className="p-2.5 hover:bg-white dark:hover:bg-slate-700 hover:shadow-sm rounded-xl transition-all text-slate-600 dark:text-slate-400 active:scale-95"><ChevronRight size={20} /></button>
+          <div className="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
+            <button onClick={() => setWeekAnchor(new Date(weekAnchor.setDate(weekAnchor.getDate() - 7)))} className="p-2.5 hover:bg-white hover:shadow-sm rounded-xl transition-all text-slate-600 cursor-pointer"><ChevronLeft size={20} /></button>
+            <button onClick={() => setWeekAnchor(new Date())} className="px-6 py-2.5 text-xs font-black text-slate-700 hover:bg-white hover:shadow-sm rounded-xl transition-all uppercase tracking-widest cursor-pointer">Today</button>
+            <button onClick={() => setWeekAnchor(new Date(weekAnchor.setDate(weekAnchor.getDate() + 7)))} className="p-2.5 hover:bg-white hover:shadow-sm rounded-xl transition-all text-slate-600 cursor-pointer"><ChevronRight size={20} /></button>
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <div className="px-5 py-3 bg-blue-50/80 dark:bg-blue-900/20 rounded-2xl border border-blue-100/50 dark:border-blue-800/50 transition-colors">
-            <span className="text-[10px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-widest flex items-center gap-2">
-               <Clock size={14} /> {DEFAULT_TIMEZONE}
+          <div className="px-4 py-2 bg-indigo-50 rounded-xl border border-indigo-100">
+            <span className="text-[10px] font-black text-indigo-700 uppercase tracking-widest flex items-center gap-2">
+               <Clock size={12} /> {DEFAULT_TIMEZONE}
             </span>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-8 divide-x divide-slate-100/50 dark:divide-slate-800/50 bg-slate-50/30 dark:bg-slate-900/30 transition-colors">
-        <div className="bg-transparent" />
+      <div className="grid grid-cols-8 divide-x divide-slate-50 bg-slate-50/30">
+        <div className="bg-white" />
         {weekDays.map(day => (
-          <div key={day.toString()} className={cn("p-6 text-center border-b-2 border-transparent transition-all relative overflow-hidden", formatDate(day) === formatDate(new Date()) && "border-blue-600")}>
-            {formatDate(day) === formatDate(new Date()) && <div className="absolute inset-0 bg-gradient-to-b from-blue-50/50 dark:from-blue-900/20 to-transparent -z-10" />}
-            <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] transition-colors">{day.toLocaleDateString('en-US', { weekday: 'short' })}</p>
-            <p className={cn("text-2xl font-black mt-2 inline-flex w-12 h-12 items-center justify-center rounded-[1.2rem] z-10 relative transition-all", formatDate(day) === formatDate(new Date()) ? "bg-blue-600 text-white shadow-lg shadow-blue-200/50" : "text-slate-800 dark:text-slate-200")}>
+          <div key={day.toString()} className={cn("p-6 text-center bg-white border-b-2 border-transparent transition-all", formatDate(day) === formatDate(new Date()) && "bg-indigo-50/20 border-indigo-600")}>
+            <p className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">{day.toLocaleDateString('en-US', { weekday: 'short' })}</p>
+            <p className={cn("text-2xl font-black mt-2 inline-flex w-12 h-12 items-center justify-center rounded-2xl", formatDate(day) === formatDate(new Date()) ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100" : "text-slate-800")}>
               {day.getDate()}
             </p>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-8 divide-x divide-slate-100/50 dark:divide-slate-800/50 flex-1 overflow-y-auto bg-slate-50/10 dark:bg-slate-950/10 transition-colors">
-        <div className="flex flex-col">
+      <div className="grid grid-cols-8 divide-x divide-slate-50 h-[700px] overflow-y-auto">
+        <div className="flex flex-col bg-white">
           {HOURS.map(h => (
-            <div key={h} className="h-24 border-b border-slate-100/50 dark:border-slate-800/50 p-4 text-[10px] font-black text-slate-300 dark:text-slate-600 text-right pr-6 tracking-[0.2em] uppercase transition-colors">
+            <div key={h} className="h-24 border-b border-slate-50/50 p-4 text-[10px] font-black text-slate-300 text-right pr-6 tracking-widest uppercase">
               {formatHour(h)}
             </div>
           ))}
@@ -68,28 +63,28 @@ export function Calendar({ weekStart, weekAnchor, setWeekAnchor, classesByDate, 
           const isToday = dateStr === formatDate(new Date())
 
           return (
-            <div key={dateStr} className={cn("relative group transition-colors", isToday && "bg-gradient-to-b from-blue-50/10 dark:from-blue-900/10 to-transparent")}>
+            <div key={dateStr} className={cn("relative group bg-white/50", isToday && "bg-indigo-50/10")}>
               {HOURS.map(h => (
                 <div 
                   key={h} 
-                  className="h-24 border-b border-slate-100/50 dark:border-slate-800/50 cursor-pointer hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors relative group/slot"
-                  onClick={() => openCreate(dateStr, h)}
+                  className={cn("h-24 border-b border-slate-50/50 relative transition-colors", !isReadOnly && "cursor-pointer hover:bg-white")}
+                  onClick={!isReadOnly ? () => openCreate(dateStr, h) : undefined}
                 >
-                   <div className="absolute inset-0 opacity-0 group-hover/slot:opacity-100 flex items-center justify-center pointer-events-none scale-90 group-hover/slot:scale-100 transition-all duration-300">
-                      <div className="w-8 h-8 rounded-full bg-blue-100/50 dark:bg-blue-900/50 flex items-center justify-center text-blue-500 dark:text-blue-400">
-                        <Plus size={16} strokeWidth={3} />
-                      </div>
-                   </div>
+                   {!isReadOnly && (
+                     <div className="absolute inset-0 opacity-0 hover:opacity-100 flex items-center justify-center pointer-events-none">
+                        <Plus size={16} className="text-indigo-200" />
+                     </div>
+                   )}
                 </div>
               ))}
               
               {dayClasses.map(c => (
-                <MeetingCard key={c.id} item={c} onEdit={openEdit} currentUser={currentUser} />
+                <MeetingCard key={c.id} item={c} onEdit={openEdit} />
               ))}
             </div>
           )
         })}
       </div>
-    </motion.div>
+    </div>
   )
 }

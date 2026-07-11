@@ -1,66 +1,80 @@
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
 
-function getAuthHeaders() {
-  const token = localStorage.getItem('token')
-  if (token) {
-    return { 'Authorization': `Bearer ${token}` }
-  }
-  return {}
-}
-
 async function request(path, options = {}) {
+  const token = localStorage.getItem('zoom_scheduler_token')
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(options.headers || {}),
+  }
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
   const resp = await fetch(`${API_BASE}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...getAuthHeaders(),
-      ...(options.headers || {}),
-    },
     ...options,
+    headers,
   })
 
   if (!resp.ok) {
-    // If unauthorized, clear token and maybe redirect
-    if (resp.status === 401) {
-      localStorage.removeItem('token')
-      window.location.reload()
-    }
-    
-    let text = ''
+    const text = await resp.text()
+    let errorDetail = text
     try {
-      const data = await resp.json()
-      text = data.detail || JSON.stringify(data)
-    } catch {
-      text = await resp.text()
+      const parsed = JSON.parse(text)
+      errorDetail = parsed.detail || text
+    } catch (e) {
+      // Use raw text if not JSON
     }
-    
-    throw new Error(text || `Request failed: ${resp.status}`)
+    throw new Error(errorDetail || `Request failed: ${resp.status}`)
   }
 
   if (resp.status === 204) return null
   return resp.json()
 }
 
-export async function requestOtp(payload) {
-  return request('/api/auth/request-otp', {
+// Authentication
+export async function login(payload) {
+  return request('/auth/login', {
     method: 'POST',
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   })
 }
 
 export async function signup(payload) {
-  return request('/api/auth/signup', {
+  return request('/auth/signup', {
     method: 'POST',
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   })
 }
 
-export async function login(payload) {
-  return request('/api/auth/login', {
+export async function verifyEmail(token) {
+  return request(`/auth/verify-email?token=${encodeURIComponent(token)}`, {
     method: 'POST',
-    body: JSON.stringify(payload)
   })
 }
 
+export async function getMe() {
+  return request('/auth/me')
+}
+
+export async function getUsersStats() {
+  return request('/auth/users/stats')
+}
+
+export async function forgotPassword(payload) {
+  return request('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function resetPassword(payload) {
+  return request('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+// Classes
 export async function listClasses() {
   return request('/api/classes')
 }
@@ -91,6 +105,21 @@ export async function syncClasses() {
   })
 }
 
+export async function syncCalendar() {
+  return request('/api/classes/sync/calendar', {
+    method: 'POST',
+  })
+}
+
+export async function getCalendarStatus() {
+  return request('/api/classes/sync/calendar/status')
+}
+
+export async function getCalendarAuthUrl() {
+  return request('/api/classes/sync/calendar/auth')
+}
+
+// Courses
 export async function listCourses() {
   return request('/api/courses')
 }
@@ -102,7 +131,27 @@ export async function createCourse(payload) {
   })
 }
 
-export async function chatWithAI(payload) {
+// Settings
+export async function getSettings() {
+  return request('/api/settings')
+}
+
+export async function updateSettings(payload) {
+  return request('/api/settings', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+// AI Integration
+export async function parseAiSchedule(payload) {
+  return request('/api/ai/parse', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
+export async function chatAi(payload) {
   return request('/api/ai/chat', {
     method: 'POST',
     body: JSON.stringify(payload),

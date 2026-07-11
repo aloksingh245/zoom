@@ -21,8 +21,6 @@ class ClassSession(Base):
     calendar_event_id: Mapped[str | None] = mapped_column(String, nullable=True)
     mentor_email: Mapped[str | None] = mapped_column(String, nullable=True)
     sheet_row_id: Mapped[str | None] = mapped_column(String, nullable=True)
-    owner_id: Mapped[str | None] = mapped_column(String, nullable=True)
-    owner_name: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

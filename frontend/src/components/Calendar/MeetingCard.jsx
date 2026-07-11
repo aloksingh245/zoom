@@ -1,61 +1,43 @@
 import { Video } from 'lucide-react'
 import { cn } from '../../utils/cn'
 import { getClassStatus, getEndTime } from '../../utils/dateUtils'
-import { motion } from 'framer-motion'
 
-export function MeetingCard({ item, onEdit, currentUser }) {
+export function MeetingCard({ item, onEdit }) {
   const status = getClassStatus(item)
   const duration = item.duration_minutes || 90
   const endTime = getEndTime(item.start_time, duration)
-  const isOwner = !item.owner_id || (currentUser && item.owner_id === currentUser.id)
 
-  const hoverInfo = `Meeting: ${item.topic_name}\nCourse: ${item.course_name}\nTime: ${item.start_time} - ${endTime}\nAssignment: ${item.assignment_name || 'None'}\nShared: ${item.mentor_email || 'None'}${item.owner_name ? '\nBy: ' + item.owner_name : ''}`
+  const hoverInfo = `Session: ${item.topic_name}\nCourse: ${item.course_name}\nMentor: ${item.mentor_email || 'Not Assigned'}\nTime: ${item.start_time} - ${endTime}`
 
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      whileHover={{ scale: 1.02, zIndex: 10 }}
+    <div
       title={hoverInfo}
       className={cn(
-        "absolute left-1.5 right-1.5 rounded-2xl p-4 border shadow-md transition-shadow overflow-hidden group/item backdrop-blur-md",
-        isOwner ? "cursor-pointer" : "cursor-default",
-        status === 'completed' ? "bg-slate-50/80 dark:bg-slate-800/80 border-slate-200/60 dark:border-slate-700/60 opacity-70 grayscale-[0.2] hover:shadow-lg" :
-        "bg-gradient-to-br from-red-600 to-red-700 border-red-500 shadow-red-500/30 text-white hover:shadow-xl hover:shadow-red-500/40"
+        "absolute left-1.5 right-1.5 rounded-2xl p-4 border shadow-xl transition-all hover:scale-[1.03] hover:z-10 cursor-pointer overflow-hidden group/item",
+        status === 'completed' ? "bg-slate-100 border-slate-200 opacity-60 grayscale-[0.3]" :
+        "bg-red-600 border-red-700 shadow-red-200/40 text-white"
       )}
       style={{
         top: `${(parseInt(item.start_time.split(':')[0]) * 96) + (parseInt(item.start_time.split(':')[1]) / 60 * 96)}px`,
         height: `${(duration / 60 * 96)}px`
-      }}      
-      onClick={(e) => { 
-        e.stopPropagation(); 
-        if (isOwner) {
-          onEdit(item); 
-        } else {
-          // Open Zoom link if not owner
-          if (item.zoom_join_url) window.open(item.zoom_join_url, '_blank', 'noreferrer');
-        }
-      }}
+      }}      onClick={(e) => { e.stopPropagation(); onEdit(item); }}
     >
       <div className="flex items-center justify-between mb-2">
-        <span className={cn("text-[10px] font-black uppercase tracking-widest", status === 'completed' ? "text-slate-500 dark:text-slate-400" : "text-red-100")}>{item.start_time} - {endTime}</span>
+        <span className={cn("text-[10px] font-black uppercase tracking-widest", status === 'completed' ? "text-slate-400" : "text-red-100")}>{item.start_time} - {endTime}</span>
         {status === 'live' && (
-          <span className="flex items-center gap-1.5 text-[9px] font-black text-red-600 bg-white px-2.5 py-0.5 rounded-full uppercase tracking-tighter shadow-sm animate-pulse">
-            <span className="w-1.5 h-1.5 bg-red-600 rounded-full" /> Live
+          <span className="flex items-center gap-1 text-[9px] font-black text-red-600 bg-white px-2 py-0.5 rounded-full uppercase tracking-tighter shadow-sm animate-bounce">
+            <span className="w-1.5 h-1.5 bg-red-600 rounded-full animate-pulse" /> Live Now
           </span>
         )}
       </div>
-      <p className={cn("text-[13px] font-black leading-tight mb-1 line-clamp-2", status === 'completed' ? "text-slate-800 dark:text-slate-100" : "text-white")}>{item.topic_name}</p>
-      <p className={cn("text-[11px] font-bold truncate opacity-90", status === 'completed' ? "text-slate-500 dark:text-slate-400" : "text-red-100")}>{item.course_name}</p>
-      {item.owner_name && (
-        <p className={cn("text-[10px] font-bold truncate opacity-75 mt-0.5", status === 'completed' ? "text-slate-500 dark:text-slate-400" : "text-red-200")}>👤 {item.owner_name}</p>
-      )}
+      <p className={cn("text-[13px] font-black leading-tight mb-1 line-clamp-2", status === 'completed' ? "text-slate-900" : "text-white")}>{item.topic_name}</p>
+      <p className={cn("text-[11px] font-bold truncate", status === 'completed' ? "text-slate-500" : "text-red-100")}>Course: {item.course_name}</p>
       
       <div className="absolute bottom-3 right-3 opacity-0 group-hover/item:opacity-100 transition-opacity flex gap-2">
-        <div className={cn("p-2 rounded-xl shadow-lg backdrop-blur-md", status === 'completed' ? "bg-white/80 dark:bg-slate-700 text-slate-600 dark:text-slate-200" : "bg-white/20 text-white border border-white/30")}>
-          <Video size={14} strokeWidth={2.5} />
+        <div className={cn("p-1.5 rounded-lg shadow-lg", status === 'completed' ? "bg-slate-400 text-white" : "bg-white text-red-600 shadow-red-900/20")}>
+          <Video size={14} />
         </div>
       </div>
-    </motion.div>
+    </div>
   )
 }

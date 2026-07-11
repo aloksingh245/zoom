@@ -2,6 +2,10 @@
 .env
 .env.local
 
+# Google credentials (use GOOGLE_CREDENTIALS_B64 env var instead)
+credentials.json
+token.json
+
 # Python
 __pycache__/
 *.py[cod]
@@ -24,9 +28,15 @@ env/
 .coverage
 htmlcov/
 
-# Build
-dist/
-build/
-*.egg-info/
-backend/sql_app.db
-uvicorn_output.log
+# Logs
+*.log
+
+
+# Local Databases
+sql_app.db
+chroma_store/
+
+# Client secrets
+oauth_client.json
+client_secret_*.json
+

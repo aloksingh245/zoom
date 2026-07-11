@@ -1,16 +1,37 @@
-import { useState } from 'react'
-import { Search, Plus, RotateCw, Sun, Moon, LogOut } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useMemo } from 'react'
+import { Search, Plus, Bell, RotateCw, Calendar, Sun, Moon } from 'lucide-react'
 
-export function TopBar({ searchTerm, setSearchTerm, openCreate, syncClasses, loading, theme, toggleTheme, onLogout, currentUser }) {
+export function TopBar({ searchTerm, setSearchTerm, openCreate, syncClasses, syncCalendar, loading, user, theme, toggleTheme }) {
   const [isSyncing, setIsSyncing] = useState(false)
-  const [isSearchFocused, setIsSearchFocused] = useState(false)
+  const [isCalSyncing, setIsCalSyncing] = useState(false)
+
+  const isAdmin = user?.role === 'admin'
+
+  const displayName = useMemo(() => {
+    if (!user?.email) return 'User'
+    const parts = user.email.split('@')[0].split(/[._\-+]/)
+    return parts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ')
+  }, [user])
+
+  const initials = useMemo(() => {
+    if (!user?.email) return 'US'
+    const parts = user.email.split('@')[0].split(/[._\-+]/)
+    if (parts.length >= 2) {
+      return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase()
+    }
+    return parts[0].substring(0, 2).toUpperCase()
+  }, [user])
+
+  const displayRole = useMemo(() => {
+    if (!user?.role) return 'Member'
+    if (user.role === 'admin') return 'Administrator'
+    return user.role.charAt(0).toUpperCase() + user.role.slice(1)
+  }, [user])
 
   const handleSync = async () => {
     setIsSyncing(true)
     try {
       const result = await syncClasses()
-      // Use a custom toast or notification in a real app, keeping alert simple for now
       alert(`Sync complete! Checked ${result.total_checked} classes, removed ${result.removed} broken links.`)
     } catch (err) {
       alert('Sync failed: ' + err.message)
@@ -19,91 +40,87 @@ export function TopBar({ searchTerm, setSearchTerm, openCreate, syncClasses, loa
     }
   }
 
-  const getInitials = (name) => {
-    if (!name) return 'U'
-    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+  const handleCalSync = async () => {
+    setIsCalSyncing(true)
+    try {
+      await syncCalendar()
+      alert('Google Calendar synchronization successful!')
+    } catch (err) {
+      alert('Calendar sync failed: ' + err.message)
+    } finally {
+      setIsCalSyncing(false)
+    }
   }
 
   return (
-    <header className="h-24 border-b border-slate-100/50 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl flex items-center justify-between px-10 z-20 sticky top-0 transition-colors duration-500">
-      <div className="flex items-center flex-1 max-w-2xl relative">
-        <motion.div 
-          animate={{ scale: isSearchFocused ? 1.02 : 1 }}
-          transition={{ type: "spring", stiffness: 400, damping: 30 }}
-          className="relative w-full group"
-        >
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors z-10" size={20} />
+    <header className="h-20 border-b border-slate-100 bg-white flex items-center justify-between px-10 z-10 shadow-sm">
+      <div className="flex items-center flex-1 max-w-2xl">
+        <div className="relative w-full group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={20} />
           <input 
             type="text" 
             placeholder="Search classes, topics, or batches..." 
-            className="w-full pl-14 pr-6 py-4 bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 rounded-[1.5rem] text-sm font-medium text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:bg-white dark:focus:bg-slate-800 focus:border-blue-200 dark:focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 transition-all outline-none shadow-sm"
+            className="w-full pl-12 pr-6 py-3 bg-slate-50 border border-transparent rounded-[1.5rem] text-sm focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-500/5 transition-all outline-none"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            onFocus={() => setIsSearchFocused(true)}
-            onBlur={() => setIsSearchFocused(false)}
           />
-        </motion.div>
+        </div>
       </div>
-      
-      <div className="flex items-center gap-6 pl-8">
-        <motion.button 
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={toggleTheme}
-          className="p-3 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-2xl transition-all shadow-sm hover:shadow-md"
-        >
-          {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
-        </motion.button>
-
-        <motion.button 
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={handleSync}
-          disabled={isSyncing || loading}
-          title="Sync with Zoom"
-          className="relative p-3 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-100 dark:hover:border-blue-900 hover:shadow-md hover:shadow-blue-100/50 rounded-2xl transition-all group"
-        >
-          <RotateCw size={20} className={isSyncing ? 'animate-spin text-blue-600' : 'group-hover:rotate-180 transition-transform duration-500'} />
-          {(isSyncing || loading) && (
-            <span className="absolute -top-1 -right-1 flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
-            </span>
-          )}
-        </motion.button>
-        
-        <motion.button 
-          whileHover={{ scale: 1.02, y: -2 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => openCreate()}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-7 py-3.5 rounded-[1.2rem] text-sm font-black flex items-center gap-2 transition-colors shadow-lg shadow-blue-200/50"
-        >
-          <Plus size={20} strokeWidth={3} />
-          <span className="hidden md:inline">New Session</span>
-        </motion.button>
-        
-        <div className="w-px h-10 bg-slate-200/60 dark:bg-slate-700/60" />
-        
-        <motion.div 
-          whileHover={{ scale: 1.02 }}
-          className="flex items-center gap-4 cursor-pointer group"
-        >
-          <div className="text-right hidden sm:block">
-            <span className="text-sm font-black text-slate-800 dark:text-slate-100 block leading-none group-hover:text-blue-900 dark:group-hover:text-blue-400 transition-colors">{currentUser?.name || 'User'}</span>
-            <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mt-1 block">Instructor</span>
+      <div className="flex items-center gap-6">
+        <div className="flex items-center gap-2">
+           {isAdmin && (
+             <>
+               <div className="relative">
+                 <button 
+                    onClick={handleSync}
+                    disabled={isSyncing || loading}
+                    title="Sync with Zoom"
+                    className={`p-2.5 bg-slate-50 text-slate-500 hover:bg-slate-100 rounded-xl transition-all cursor-pointer ${isSyncing ? 'animate-spin' : ''}`}
+                 >
+                   <RotateCw size={20} />
+                 </button>
+               </div>
+               <div className="relative">
+                 <button 
+                    onClick={handleCalSync}
+                    disabled={isCalSyncing || loading}
+                    title="Sync with Google Calendar"
+                    className={`p-2.5 bg-slate-50 text-slate-500 hover:bg-slate-100 rounded-xl transition-all cursor-pointer ${isCalSyncing ? 'animate-spin' : ''}`}
+                 >
+                   <Calendar size={20} />
+                 </button>
+               </div>
+             </>
+           )}
+            <button 
+              onClick={toggleTheme}
+              title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              className="p-2.5 bg-slate-50 text-slate-500 hover:bg-slate-100 rounded-xl transition-all cursor-pointer mr-2"
+            >
+              {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
+            <div className="relative">
+              <button className="p-2.5 bg-slate-50 text-slate-500 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"><Bell size={20} /></button>
+              <span className="absolute top-2 right-2 w-2 h-2 bg-indigo-600 rounded-full border-2 border-white"></span>
+            </div>
+        </div>
+        {isAdmin && (
+          <button 
+            onClick={() => openCreate()}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-[1.2rem] text-sm font-bold flex items-center gap-2 transition-all shadow-xl shadow-indigo-100 active:scale-95 cursor-pointer"
+          >
+            <Plus size={20} />
+            New Session
+          </button>
+        )}
+        <div className="w-px h-8 bg-slate-100" />
+        <div className="flex items-center gap-3 cursor-pointer group">
+          <div className="text-right">
+            <span className="text-sm font-bold text-slate-800 block leading-none">{displayName}</span>
+            <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-wider">{displayRole}</span>
           </div>
-          <div className="w-12 h-12 rounded-[1.2rem] bg-gradient-to-br from-blue-50 to-blue-100 dark:from-slate-800 dark:to-slate-700 text-blue-700 dark:text-blue-400 flex items-center justify-center text-sm font-black border-2 border-white dark:border-slate-600 shadow-sm group-hover:shadow-md transition-all">{getInitials(currentUser?.name)}</div>
-        </motion.div>
-
-        <motion.button 
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={onLogout}
-          title="Log Out"
-          className="p-3 ml-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-2xl transition-all shadow-sm hover:shadow-md"
-        >
-          <LogOut size={20} />
-        </motion.button>
+          <div className="w-12 h-12 rounded-[1.2rem] bg-indigo-50 text-indigo-700 flex items-center justify-center text-sm font-black border-2 border-transparent group-hover:border-indigo-200 transition-all">{initials}</div>
+        </div>
       </div>
     </header>
   )

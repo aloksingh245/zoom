@@ -33,9 +33,20 @@ Thumbs.db
 dist/
 build/
 *.egg-info/
-
-# Secrets & Local Data
+# Secrets
 backend/token.json
 backend/oauth_client.json
+backend/*.json
 backend/sql_app.db
-frontend/dist
+backend/chroma_store/
+chroma_store/
+
+# Local developer notes
+prompt.md
+POC.md
+
+# Logs
+*.log
+
+
+

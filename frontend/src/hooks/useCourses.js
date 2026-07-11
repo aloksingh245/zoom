@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { listCourses, createCourse } from '../services/api'
 
-export function useCourses() {
+export function useCourses(isAuthenticated) {
   const [courses, setCourses] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
@@ -19,14 +19,20 @@ export function useCourses() {
   }
 
   useEffect(() => {
-    fetchCourses()
-  }, [])
+    if (isAuthenticated) {
+      fetchCourses()
+    } else {
+      setCourses([])
+      setError(null)
+    }
+  }, [isAuthenticated])
 
   const addCourse = async (payload) => {
     const saved = await createCourse(payload)
     setCourses(prev => [...prev, saved])
     return saved
   }
+
 
   return { courses, loading, error, fetchCourses, addCourse }
 }

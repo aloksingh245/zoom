@@ -33,13 +33,32 @@ export function dayLabel(date) {
 
 export function getClassStatus(item) {
   try {
-    const now = new Date()
     const tz = item.timezone || 'Asia/Kolkata'
-    const nowInTz = new Date(now.toLocaleString('en-US', { timeZone: tz }))
-    
-    const start = new Date(`${item.date}T${item.start_time}:00`)
+    const now = new Date()
+
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    })
+      .formatToParts(now)
+      .reduce((acc, part) => {
+        if (part.type !== 'literal') acc[part.type] = part.value
+        return acc
+      }, {})
+
+    const nowInTz = Date.parse(
+      `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}`,
+    )
+
+    const start = Date.parse(`${item.date}T${item.start_time}:00`)
     const duration = item.duration_minutes || SESSION_DURATION_MINS
-    const end = new Date(start.getTime() + duration * 60000)
+    const end = start + duration * 60000
 
     if (nowInTz < start) return 'upcoming'
     if (nowInTz >= start && nowInTz <= end) return 'live'

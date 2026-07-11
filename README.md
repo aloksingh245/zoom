@@ -1,131 +1,160 @@
-#  Zoom Class Scheduler POC
+# 📅 Zoom Class Scheduler — Core Platform
 
-A sophisticated, full-stack Class Scheduling system featuring real-time **Zoom Integration**, **AI-Powered Scheduling**, and **Secure Multi-User Authentication**. Built with a professional event-driven architecture.
-
----
-
-##  Key Features
-
-- ** Multi-User Authentication**: Complete Signup/Login flow with real-world **Email OTP Verification** (Gmail SMTP).
-- ** Ownership Protection**: Shared visibility calendar where users can see all classes but **only the creator** can edit or delete them.
-- ** Zoom Integration**: Automatic creation, updating, and deletion of Zoom Meetings synchronized with the app.
-- ** AI Scheduler**: LLaMA 3.1 powered assistant that understands natural language to schedule classes instantly.
-- ** Visual Calendar**: Beautiful week-view grid with real-time status indicators (Live, Upcoming, Completed).
-- ** Google Sync**: Background synchronization with Google Calendar and Google Sheets via an internal Event Bus.
+An advanced scheduling platform designed to coordinate and manage virtual class sessions. The system integrates synchronously with the **Zoom API** for meeting provisioning, and utilizes an asynchronous event-driven architecture to coordinate secondary integrations: **Google Calendar** (OAuth PKCE), **Google Sheets** (Service Account logs), and **AcceleratorX CRM**. The platform also features an interactive, role-based week calendar UI and a built-in streaming **AI Agent assistant** powered by Google Gemini and ChromaDB RAG.
 
 ---
 
-##  Technical Architecture
+## 🚀 Key Features
 
-### **Backend (FastAPI)**
-The backend follows a decoupled, event-driven design:
-- **Core Path**: Synchronous CRUD operations and Zoom API communication.
-- **Event Bus**: An internal publisher-subscriber system that triggers side effects (GCal/Sheets sync) without blocking the main request.
-- **Security**: JWT (JSON Web Token) based stateless authentication with Bcrypt password hashing.
-
-### **Frontend (React + Vite + Tailwind)**
-- **State Management**: Custom React hooks (`useClasses`, `useCourses`) for clean logic separation.
-- **UI Components**: Framer Motion animations, Lucide icons, and a responsive glassmorphic design.
-
----
-
-##  Database Schema (SQLite)
-
-The system uses SQLAlchemy with `aiosqlite` for asynchronous database operations.
-
-### **Users Table**
-| Column | Type | Description |
-| :--- | :--- | :--- |
-| `id` | UUID (String) | Primary Key |
-| `name` | String | User's full name |
-| `email` | String | Unique email address |
-| `hashedPassword` | String | Bcrypt hashed password |
-| `isVerified` | Boolean | True after OTP success |
-
-### **Classes Table**
-| Column | Type | Description |
-| :--- | :--- | :--- |
-| `id` | UUID (String) | Primary Key |
-| `topic_name` | String | Title of the class |
-| `zoom_join_url` | String | Direct link to Zoom |
-| `owner_id` | String | Foreign Key to User ID |
-| `mentor_email` | String | Optional guest email |
-| `date / start_time` | String | ISO formatted timing |
+*   📅 **Interactive Week-View Calendar Grid**: Drag/click slots to schedule sessions with automatic time and duration layouts.
+*   🎥 **Zoom Video Conferencing (Sync Path)**: Automated creation, updating, and cancellation of Zoom meetings.
+*   📅 **Google Calendar Sync (Async Path)**: Bi-directional event synchronization with user accounts via PKCE OAuth.
+*   📊 **Google Sheets Logging (Async Path)**: Asynchronous reporting of class metrics using service account credentials.
+*   🏢 **CRM Webhook Updates (Async Path)**: Automated class record updates pushed to AcceleratorX CRM.
+*   🤖 **Gemini-Powered AI Parsing**: Extract schedule parameters from natural language prompts to auto-populate class forms.
+*   💬 **Floating AI Chatbot (ZoomBot)**: A role-aware assistant answering workspace queries and scheduling classes semantically utilizing ChromaDB RAG.
+*   🔐 **Role-Based JWT Authentication**: Secure access limits for Admin (full CRUD), Mentor (assigned classes view only), and Student (view only) accounts.
 
 ---
 
-##  Integrations & API Keys
+## 🏗️ Architecture & Topology
 
-To run this project, configure the following keys in `backend/.env`:
-
-| Service | Key Needed | Purpose |
-| :--- | :--- | :--- |
-| **Zoom** | `ZOOM_CLIENT_ID`, `SECRET` | Server-to-Server OAuth for meetings |
-| **Groq** | `GROQ_API_KEY` | Powers the LLaMA 3.1 AI Assistant |
-| **Gmail** | `SMTP_PASSWORD` | Sends real OTP emails (App Password) |
-| **Google** | `credentials.json` | Google Calendar & Sheets API access |
+```
+┌───────────────────────────────────────────────────────────┐
+│              FRONTEND (React 19 + Tailwind v4)            │
+│                       Port: 5173                          │
+└─────────────────────────────┬─────────────────────────────┘
+                              │ HTTP + Bearer JWT
+                              ▼
+┌───────────────────────────────────────────────────────────┐
+│               BACKEND (FastAPI + uvicorn)                 │
+│                       Port: 8000                          │
+└──────────────┬──────────────┬──────────────┬──────────────┘
+               │              │              │
+        (Sync Path)     (Async Events) (Async Events) (Async Events)
+               ▼              ▼              ▼              ▼
+┌──────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐
+│    SQLite    │ │  Zoom API  │ │ Google API │ │  CRM API   │
+│  sql_app.db  │ │ M2M OAuth  │ │  Calendar  │ │AcceleratorX│
+└──────────────┘ └────────────┘ └────────────┘ └────────────┘
+```
 
 ---
 
-##  Setup Instructions
+## 📁 Repository Map
+
+```
+zoom-scheduler/
+├── backend/               # FastAPI async application (Uvicorn)
+│   ├── core/              # Database engine, config settings, and EventBus
+│   ├── modules/           # Auth, classes, courses, settings, and Agent modules
+│   ├── integrations/      # Zoom, Google Calendar, Google Sheets, and CRM clients
+│   ├── tests/             # Structured unit, integration, and agent test suites
+│   ├── main.py            # Lifecycle hooks, routers, and application startup
+│   └── pyproject.toml     # Python dependencies managed via uv
+├── frontend/              # Vite SPA (React 19 + Tailwind v4)
+│   ├── src/               # Components (Auth, Calendar, Dashboard, Settings, Agent)
+│   ├── package.json       # Node package manifest
+│   └── vite.config.js     # Vite builder config
+├── docker-compose.yml     # Multi-container local execution setup
+├── DEEP_UNDERSTANDING.md  # Detailed system architecture deep-dive
+├── architecture.md        # Technical design and schema specifications
+└── README.md              # This file
+```
+
+---
+
+## ⚙️ Setup & Local Installation
+
+### Prerequisites
+*   [Python 3.12+](https://www.python.org/downloads/)
+*   [Node.js 18+](https://nodejs.org/)
+*   [uv Package Manager](https://astral.sh/uv/)
+
+---
 
 ### 1. Backend Setup
-```bash
-cd backend
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-# Configure .env with your keys
-python main.py
-```
+1. Navigate into the backend directory and synchronize dependencies:
+   ```bash
+   cd backend
+   uv sync
+   ```
+2. Create your environment configuration file:
+   ```bash
+   cp .env.example .env
+   ```
+3. Open `backend/.env` and supply the required API keys (Zoom S2S OAuth details, Google Sheets ID, Google Web Client Secrets, SMTP account details, and a Gemini API Key).
+4. Run the API development server:
+   ```bash
+   uv run uvicorn main:app --reload --port 8000
+   ```
+   Interactive Swagger documentation will be available at [http://localhost:8000/docs](http://localhost:8000/docs).
+
+---
 
 ### 2. Frontend Setup
+1. Navigate into the frontend directory:
+   ```bash
+   cd ../frontend
+   ```
+2. Install npm dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the dev server:
+   ```bash
+   npm run dev
+   ```
+   Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+---
+
+## 🐳 Running with Docker Compose
+
+To launch both the Frontend (:5173) and Backend (:8000) inside isolated containers simultaneously:
+
 ```bash
-cd frontend
-npm install
-npm run dev
+# From the project root directory
+docker-compose up --build
 ```
 
 ---
 
-##  Demo Example: AI Scheduling
+## 🧪 Testing
 
-**User Chat:**
-> "Hey, schedule a Physics class for tomorrow at 5 PM. Mentor email is alok@example.com"
+The backend includes a comprehensive, structured test suite checking auth lifecycles, background event dispatches, calendar updates, and AI Agent guardrails.
 
-**AI Action (Internal JSON):**
-```json
-{
-  "course_name": "Physics",
-  "topic_name": "Introduction",
-  "date": "2026-04-15",
-  "start_time": "17:00",
-  "mentor_email": "alok@example.com",
-  "AUTO_EXECUTE": true
-}
-```
-**Result:**
-1. User receives a 200 OK.
-2. Zoom Meeting is created instantly.
-3. Google Calendar invite is sent to `alok@example.com` in the background.
-4. Meeting appears on the visual calendar for all users.
-
----
-
-## Project Structure
-```text
-├── backend/
-│   ├── core/           # Security, Database config, Event Bus
-│   ├── integrations/   # Zoom, GCal, Google Sheets clients
-│   ├── modules/        # Auth, Classes, Courses, AI logic
-│   ├── tests/          # Automated test suite
-│   └── main.py         # Entry point
-└── frontend/
-    ├── src/
-    │   ├── components/ # Atomic UI components (Calendar, Auth, AI)
-    │   ├── hooks/      # Business logic hooks
-    │   └── services/   # API communication layer
+To run tests:
+```bash
+cd backend
+uv run python -m pytest tests/ -v
 ```
 
 ---
-*Created as a professional POC for high-efficiency educational scheduling.*
+
+## 🔐 Environment Configuration Reference
+
+The following environment variables should be set in `backend/.env`:
+
+| Key | Description | Example / Fallback |
+| :--- | :--- | :--- |
+| `ZOOM_ACCOUNT_ID` | Zoom Server-to-Server Account ID | *Your Zoom account ID* |
+| `ZOOM_CLIENT_ID` | Zoom Client ID | *Your Zoom Client ID* |
+| `ZOOM_CLIENT_SECRET` | Zoom Client Secret | *Your Zoom Client Secret* |
+| `GOOGLE_CALENDAR_ID` | Google Calendar target ID | `primary` |
+| `GOOGLE_SHEET_ID` | Spreadsheet ID for reporting logs | *Your Google Sheet ID* |
+| `SMTP_USERNAME` | Gmail address for sending verification emails | `example@gmail.com` |
+| `SMTP_PASSWORD` | App-specific Google password | *Gmail App Password* |
+| `GEMINI_API_KEY` | Gemini API access token | *Your Gemini API key* |
+| `BACKEND_URL` | Base endpoint URL of the FastAPI backend | `http://localhost:8000` |
+| `APP_URL` | Base URL of the React Frontend | `http://localhost:5173` |
+
+---
+
+## 🛡️ Security & Ignore Policy
+
+For security, the following local files and database directories are ignored in [.gitignore](file:///.gitignore) and must never be pushed to GitHub:
+*   Local database files: `backend/sql_app.db` and vector logs `backend/chroma_store/`.
+*   User credential tokens: `backend/token.json` and service keys `backend/credentials.json`.
+*   Private configuration values: `backend/.env`.
+*   Developer logs: `*.log`.

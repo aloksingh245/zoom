@@ -5,14 +5,20 @@ import { Dashboard } from './components/Dashboard/Dashboard'
 import { Calendar } from './components/Calendar/Calendar'
 import { CourseList } from './components/Courses/CourseList'
 import { ClassModal } from './components/Modals/ClassModal'
-import { AIAssistant } from './components/AI/AIAssistant'
-import { AuthPage } from './components/Auth/AuthPage'
-import { AlertCircle, X } from 'lucide-react'
+import { AlertCircle, X, CheckCircle } from 'lucide-react'
 import { useClasses } from './hooks/useClasses'
 import { useCourses } from './hooks/useCourses'
+import { useUsersStats } from './hooks/useUsersStats'
 import { formatDate, isPastLocal, startOfWeek } from './utils/dateUtils'
 import { DEFAULT_TIMEZONE } from './constants'
-import { AnimatePresence, motion } from 'framer-motion'
+import { useAuth } from './context/AuthContext'
+import { AuthPage } from './components/Auth/AuthPage'
+import { VerifyEmail } from './components/Auth/VerifyEmail'
+import { ResetPassword } from './components/Auth/ResetPassword'
+import { SettingsPanel } from './components/Settings/SettingsPanel'
+import { ChatBubble } from './components/Agent/ChatBubble'
+
+
 
 function emptyForm(date) {
   return {
@@ -29,40 +35,26 @@ function emptyForm(date) {
 }
 
 export default function App() {
-  const [token, setToken] = useState(() => localStorage.getItem('token'))
-  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light')
+  const { user, loading, logout } = useAuth()
+  const [view, setView] = useState('dashboard')
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('zoom_scheduler_theme') || 'light'
+  })
 
   useEffect(() => {
-    const root = window.document.documentElement
     if (theme === 'dark') {
-      root.classList.add('dark')
+      document.documentElement.classList.add('dark')
+      document.body.classList.add('dark')
     } else {
-      root.classList.remove('dark')
+      document.documentElement.classList.remove('dark')
+      document.body.classList.remove('dark')
     }
-    localStorage.setItem('theme', theme)
+    localStorage.setItem('zoom_scheduler_theme', theme)
   }, [theme])
 
-  const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light')
-
-  const handleLogin = (newToken) => {
-    localStorage.setItem('token', newToken)
-    setToken(newToken)
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light')
   }
-
-  const handleLogout = () => {
-    localStorage.removeItem('token')
-    setToken(null)
-  }
-
-  if (!token) {
-    return <AuthPage onLogin={handleLogin} theme={theme} />
-  }
-
-  return <MainApp theme={theme} toggleTheme={toggleTheme} onLogout={handleLogout} token={token} />
-}
-
-function MainApp({ theme, toggleTheme, onLogout, token }) {
-  const [view, setView] = useState('dashboard')
   const [searchTerm, setSearchTerm] = useState('')
   const [weekAnchor, setWeekAnchor] = useState(new Date())
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -70,37 +62,40 @@ function MainApp({ theme, toggleTheme, onLogout, token }) {
   const [form, setForm] = useState(emptyForm(formatDate(new Date())))
   const [localError, setLocalError] = useState('')
 
-  const currentUser = useMemo(() => {
-    if (!token) return null;
-    try {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-      }).join(''));
-      return JSON.parse(jsonPayload);
-    } catch (e) {
-      console.error("Failed to parse token", e);
-      return null;
-    }
-  }, [token])
-
   const { 
     classes, 
     loading: classesLoading, 
     error: classesError, 
+    setError: setClassesError,
     addClass, 
     editClass, 
     removeClass,
     syncWithZoom,
+    syncWithCalendar,
+    calendarConnected,
+    connectCalendar,
     classesByDate 
-  } = useClasses()
+  } = useClasses(!!user)
+
+  const [success, setSuccess] = useState('')
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('gcal_success') === 'true') {
+      setSuccess('Google Calendar was successfully connected! You can now sync classes.')
+      window.history.replaceState({}, document.title, window.location.pathname)
+    }
+  }, [])
 
   const { 
     courses, 
     loading: coursesLoading, 
     addCourse 
-  } = useCourses()
+  } = useCourses(!!user)
+
+  const {
+    stats: userStats
+  } = useUsersStats(!!user)
 
   const weekStart = useMemo(() => startOfWeek(weekAnchor), [weekAnchor])
 
@@ -119,6 +114,7 @@ function MainApp({ theme, toggleTheme, onLogout, token }) {
   , [classes])
 
   function openCreate(date = formatDate(new Date()), hour = 9) {
+    if (user?.role !== 'admin') return
     setEditing(null)
     setForm({
       ...emptyForm(date),
@@ -130,6 +126,7 @@ function MainApp({ theme, toggleTheme, onLogout, token }) {
   function openEdit(item) {
     setEditing(item)
     setLocalError('')
+    setClassesError(null)
     setForm({
       course_id: item.course_id,
       course_name: item.course_name,
@@ -144,75 +141,14 @@ function MainApp({ theme, toggleTheme, onLogout, token }) {
     setIsModalOpen(true)
   }
 
-  async function handleAISuggestion(action, autoSave = false) {
-    setEditing(null)
-    setLocalError('')
-    
-    // Find course_id if course_name is provided
-    let cid = ''
-    if (action.course_name) {
-      const match = courses.find(c => c.name.toLowerCase() === action.course_name.toLowerCase())
-      if (match) cid = match.id
-    }
-
-    const newForm = {
-      ...emptyForm(action.date || formatDate(new Date())),
-      course_id: cid,
-      course_name: cid ? '' : (action.course_name || ''),
-      topic_name: action.topic_name || '',
-      start_time: action.start_time || '09:00',
-      duration_minutes: action.duration_minutes || 90,
-      mentor_email: action.mentor_email || '',
-    }
-
-    setForm(newForm)
-    
-    if (autoSave) {
-      try {
-        if (!newForm.course_id?.trim() && !newForm.course_name?.trim()) {
-          throw new Error('Course is required.')
-        }
-        if (!newForm.topic_name?.trim()) {
-          throw new Error('Topic name is required.')
-        }
-
-        let payload = { ...newForm }
-        if (!payload.assignment_name?.trim()) delete payload.assignment_name;
-        if (!payload.mentor_email?.trim()) delete payload.mentor_email;
-
-        if (!payload.course_id && payload.course_name) {
-          const created = await addCourse({ name: payload.course_name.trim() })
-          payload.course_id = created.id
-          delete payload.course_name
-        }
-        
-        if (payload.course_id) {
-          delete payload.course_name;
-        }
-
-        await addClass(payload)
-      } catch (err) {
-        setLocalError('AI Auto-schedule failed: ' + err.message)
-        setIsModalOpen(true) // Open to show error and let user fix
-      }
-    } else {
-      setIsModalOpen(true)
-    }
-  }
-
   async function handleSave(e) {
     e.preventDefault()
+    if (user?.role !== 'admin') {
+      setLocalError('Unauthorized action. Only administrators can schedule sessions.')
+      return
+    }
     setLocalError('')
-
-    if (!form.course_id?.trim() && !form.course_name?.trim()) {
-      setLocalError('Please select a course or enter a new course name.')
-      return
-    }
-
-    if (!form.topic_name?.trim()) {
-      setLocalError('Please enter a session topic.')
-      return
-    }
+    setClassesError(null)
 
     if (isPastLocal(form.date, form.start_time, form.timezone)) {
       setLocalError(`Start time must be in the future (${form.timezone}).`)
@@ -220,42 +156,25 @@ function MainApp({ theme, toggleTheme, onLogout, token }) {
     }
 
     try {
-      let payload = { ...form }
-
-      // Clean up empty strings for optional fields
-      if (!payload.assignment_name?.trim()) delete payload.assignment_name;
-      if (!payload.mentor_email?.trim()) delete payload.mentor_email;
-
-      if (!payload.course_id && payload.course_name) {
-        const existing = courses.find(c => c.name.toLowerCase() === payload.course_name.trim().toLowerCase())
-        if (!existing) {
-          const created = await addCourse({ name: payload.course_name.trim() })
-          payload.course_id = created.id
-        } else {
-          payload.course_id = existing.id
-        }
-        delete payload.course_name
-      }
-
-      // If course_id is set, ensure course_name is deleted just in case
-      if (payload.course_id) {
-        delete payload.course_name;
-      }
-
       if (editing) {
-        await editClass(editing.id, payload)
+        await editClass(editing.id, form)
       } else {
-        await addClass(payload)
+        await addClass(form)
       }
       setIsModalOpen(false)
     } catch (err) {
       setLocalError(err.message || 'Failed to save class')
     }
   }
+
   async function handleDelete() {
+    if (user?.role !== 'admin') {
+      setLocalError('Unauthorized action. Only administrators can delete sessions.')
+      return
+    }
     if (!editing) return
     if (!window.confirm('Are you sure you want to delete this class? This will also remove the Zoom meeting.')) return
-    
+
     try {
       await removeClass(editing.id)
       setIsModalOpen(false)
@@ -266,84 +185,112 @@ function MainApp({ theme, toggleTheme, onLogout, token }) {
 
   const error = classesError || localError
 
-  const pageVariants = {
-    initial: { opacity: 0, y: 10, scale: 0.98 },
-    in: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] } },
-    out: { opacity: 0, y: -10, scale: 0.98, transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] } }
+  const isVerifyEmailPage = window.location.pathname === '/verify-email'
+  const isResetPasswordPage = window.location.pathname === '/reset-password'
+
+  if (isVerifyEmailPage) {
+    return <VerifyEmail />
+  }
+
+  if (isResetPasswordPage) {
+    return <ResetPassword />
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-screen bg-[#0b0f19] items-center justify-center font-sans">
+        <div className="space-y-4 text-center animate-in fade-in duration-300">
+          <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-slate-400 text-sm font-bold tracking-wider">Verifying session...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return <AuthPage />
   }
 
   return (
-    <div className="flex h-screen bg-[#F0F4F8] dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden font-sans select-none p-4 gap-4 transition-colors duration-500">
-      <Sidebar view={view} setView={setView} theme={theme} />
-      
-      <main className="flex-1 flex flex-col overflow-hidden bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl rounded-[2.5rem] shadow-sm border border-white/50 dark:border-slate-800/50 relative">
+    <div className="flex h-screen bg-[#F8FAFC] text-slate-900 overflow-hidden font-sans select-none">
+      <Sidebar 
+        view={view} 
+        setView={setView} 
+        user={user} 
+        onLogout={logout} 
+        onSyncCalendar={syncWithCalendar}
+        calendarConnected={calendarConnected}
+        onConnectCalendar={connectCalendar}
+      />
+
+      <main className="flex-1 flex flex-col overflow-hidden">
         <TopBar 
           searchTerm={searchTerm} 
           setSearchTerm={setSearchTerm} 
           openCreate={() => openCreate()} 
           syncClasses={syncWithZoom}
+          syncCalendar={syncWithCalendar}
           loading={classesLoading}
+          user={user}
           theme={theme}
           toggleTheme={toggleTheme}
-          onLogout={onLogout}
-          currentUser={currentUser}
         />
 
-        <div className="flex-1 overflow-y-auto p-10 relative">
+        <div className="flex-1 overflow-y-auto p-10 bg-slate-50/30">
+          {success && (
+            <div className="mb-8 p-5 bg-emerald-50 border border-emerald-100 rounded-[1.5rem] flex items-center gap-4 text-emerald-700 animate-in fade-in slide-in-from-top-6 duration-300">
+              <div className="p-2 bg-emerald-100 rounded-xl"><CheckCircle size={24} /></div>
+              <div>
+                <p className="text-sm font-black">Success</p>
+                <p className="text-xs font-medium opacity-80">{success}</p>
+              </div>
+              <button onClick={() => setSuccess('')} className="ml-auto p-2 hover:bg-emerald-100 rounded-xl transition-colors"><X size={20} /></button>
+            </div>
+          )}
+
           {error && (
-            <motion.div 
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="mb-8 p-5 bg-red-50/80 backdrop-blur-sm border border-red-100 rounded-[1.5rem] flex items-center gap-4 text-red-700"
-            >
+            <div className="mb-8 p-5 bg-red-50 border border-red-100 rounded-[1.5rem] flex items-center gap-4 text-red-700 animate-in fade-in slide-in-from-top-6 duration-300">
               <div className="p-2 bg-red-100 rounded-xl"><AlertCircle size={24} /></div>
               <div>
                 <p className="text-sm font-black">Something went wrong</p>
                 <p className="text-xs font-medium opacity-80">{error}</p>
               </div>
-              <button onClick={() => setLocalError('')} className="ml-auto p-2 hover:bg-red-100 rounded-xl transition-colors"><X size={20} /></button>
-            </motion.div>
+              <button onClick={() => { setLocalError(''); setClassesError(null); }} className="ml-auto p-2 hover:bg-red-100 rounded-xl transition-colors"><X size={20} /></button>
+            </div>
           )}
 
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={view}
-              variants={pageVariants}
-              initial="initial"
-              animate="in"
-              exit="out"
-              className="h-full"
-            >
-              {view === 'dashboard' && (
-                <Dashboard 
-                  classes={filteredClasses} 
-                  todayClasses={todayClasses}
-                  courses={courses}
-                  setView={setView}
-                  openEdit={openEdit}
-                  openCreate={openCreate}
-                  currentUser={currentUser}
-                />
-              )}
+          {view === 'dashboard' && (
+            <Dashboard 
+              classes={filteredClasses} 
+              todayClasses={todayClasses}
+              courses={courses}
+              userStats={userStats}
+              setView={setView}
+              openEdit={openEdit}
+              openCreate={openCreate}
+              userRole={user?.role}
+            />
+          )}
 
-              {view === 'calendar' && (
-                <Calendar 
-                  weekStart={weekStart}
-                  weekAnchor={weekAnchor}
-                  setWeekAnchor={setWeekAnchor}
-                  classesByDate={classesByDate}
-                  openCreate={openCreate}
-                  openEdit={openEdit}
-                  currentUser={currentUser}
-                />
-              )}
+          {view === 'calendar' && (
+            <Calendar 
+              weekStart={weekStart}
+              weekAnchor={weekAnchor}
+              setWeekAnchor={setWeekAnchor}
+              classesByDate={classesByDate}
+              openCreate={openCreate}
+              openEdit={openEdit}
+              userRole={user?.role}
+            />
+          )}
 
-              {view === 'courses' && (
-                <CourseList courses={courses} />
-              )}
-            </motion.div>
-          </AnimatePresence>
+          {view === 'courses' && (
+            <CourseList courses={courses} />
+          )}
+
+          {view === 'settings' && (
+            <SettingsPanel />
+          )}
         </div>
       </main>
 
@@ -357,10 +304,9 @@ function MainApp({ theme, toggleTheme, onLogout, token }) {
         setForm={setForm}
         courses={courses}
         loading={classesLoading || coursesLoading}
-        currentUser={currentUser}
+        userRole={user?.role}
       />
-
-      <AIAssistant onSuggestAction={handleAISuggestion} />
+      <ChatBubble user={user} />
     </div>
   )
 }

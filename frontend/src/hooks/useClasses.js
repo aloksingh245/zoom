@@ -1,11 +1,32 @@
 import { useState, useEffect, useMemo } from 'react'
-import { listClasses, createClass, updateClass, deleteClass, syncClasses } from '../services/api'
+import { listClasses, createClass, updateClass, deleteClass, syncClasses, syncCalendar, getCalendarStatus, getCalendarAuthUrl } from '../services/api'
 import { getClassStatus } from '../utils/dateUtils'
 
-export function useClasses() {
+export function useClasses(isAuthenticated) {
   const [classes, setClasses] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [calendarConnected, setCalendarConnected] = useState(false)
+
+  const checkCalendarStatus = async () => {
+    try {
+      const status = await getCalendarStatus()
+      setCalendarConnected(status.connected)
+    } catch (err) {
+      // Fail silently
+    }
+  }
+
+  const connectCalendar = async () => {
+    try {
+      const res = await getCalendarAuthUrl()
+      if (res && res.auth_url) {
+        window.location.href = res.auth_url
+      }
+    } catch (err) {
+      setError(err.message)
+    }
+  }
 
   const fetchClasses = async () => {
     setLoading(true)
@@ -20,8 +41,15 @@ export function useClasses() {
   }
 
   useEffect(() => {
-    fetchClasses()
-  }, [])
+    if (isAuthenticated) {
+      fetchClasses()
+      checkCalendarStatus()
+    } else {
+      setClasses([])
+      setCalendarConnected(false)
+      setError(null)
+    }
+  }, [isAuthenticated])
 
   const addClass = async (payload) => {
     const saved = await createClass(payload)
@@ -54,6 +82,21 @@ export function useClasses() {
     }
   }
 
+  const syncWithCalendar = async () => {
+    setLoading(true)
+    try {
+      const result = await syncCalendar()
+      await fetchClasses()
+      await checkCalendarStatus()
+      return result
+    } catch (err) {
+      setError(err.message)
+      throw err
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const classesByDate = useMemo(() => {
     const map = new Map()
     classes.forEach(item => {
@@ -68,11 +111,16 @@ export function useClasses() {
     classes, 
     loading, 
     error, 
+    setError,
     fetchClasses, 
     addClass, 
     editClass, 
     removeClass,
     syncWithZoom,
+    syncWithCalendar,
+    calendarConnected,
+    checkCalendarStatus,
+    connectCalendar,
     classesByDate
   }
 }

@@ -31,6 +31,12 @@ class CalendarService:
                 return creds
             except Exception as e:
                 logger.error(f"Error loading/refreshing token.json: {e}")
+                if "invalid_grant" in str(e).lower():
+                    logger.warning("Token has been revoked or is invalid. Deleting token.json to prevent repeated errors.")
+                    try:
+                        os.remove("token.json")
+                    except Exception as rm_err:
+                        logger.error(f"Failed to remove invalid token.json: {rm_err}")
         
         return None
 
@@ -75,27 +81,19 @@ class CalendarService:
         
         cal_meta = await self._execute_sync(get_calendar)
         organizer_email = cal_meta.get('id')
-        logger.info(f"Google Organizer Email: {organizer_email}")
         
         attendees = []
-        if mentor_email:
-            logger.info(f"Checking mentor_email: {mentor_email.lower()} vs organizer: {organizer_email.lower()}")
-            if mentor_email.lower() != organizer_email.lower():
-                attendees.append({'email': mentor_email})
-                logger.info("Mentor added to attendees list.")
-            else:
-                logger.warning("Mentor email is the same as organizer email. Google will not send an invite email.")
+        if mentor_email and mentor_email.lower() != organizer_email.lower():
+            attendees.append({'email': mentor_email})
 
         event = {
             'summary': topic,
             'description': f'Zoom Meeting: {zoom_link}\nScheduled via Zoom Scheduler.',
             'start': {
                 'dateTime': start_dt,
-                'timeZone': timezone,
             },
             'end': {
                 'dateTime': end_dt,
-                'timeZone': timezone,
             },
             'attendees': attendees,
             'reminders': {
@@ -108,17 +106,15 @@ class CalendarService:
         }
 
         try:
-            logger.info(f"Sending insert request to Google Calendar for topic: {topic}")
             def make_request():
                 return service.events().insert(
                     calendarId='primary',
                     sendUpdates='all',
-                    body=event,
-                    conferenceDataVersion=1
+                    body=event
                 ).execute()
 
             resp = await self._execute_sync(make_request)
-            logger.info(f"SUCCESS: GCal event created. ID={resp.get('id')}. Status={resp.get('status')}")
+            logger.info(f"Google Calendar event created successfully! Event ID: {resp.get('id')}")
             return resp.get('id')
             
         except Exception as e:
@@ -169,14 +165,8 @@ class CalendarService:
                     end_dt_aware = start_dt_aware + timedelta(minutes=duration)
                     end_dt_utc = end_dt_aware.astimezone(ZoneInfo("UTC"))
                     
-                    event['start'] = {
-                        'dateTime': start_dt_utc.isoformat().replace("+00:00", "Z"),
-                        'timeZone': timezone or event['start'].get('timeZone', 'UTC')
-                    }
-                    event['end'] = {
-                        'dateTime': end_dt_utc.isoformat().replace("+00:00", "Z"),
-                        'timeZone': timezone or event['end'].get('timeZone', 'UTC')
-                    }
+                    event['start'] = {'dateTime': start_dt_utc.isoformat().replace("+00:00", "Z")}
+                    event['end'] = {'dateTime': end_dt_utc.isoformat().replace("+00:00", "Z")}
                 
                 if mentor_email:
                     if organizer_email and mentor_email.lower() != organizer_email.lower():
@@ -188,13 +178,16 @@ class CalendarService:
                     calendarId='primary',
                     eventId=event_id,
                     sendUpdates='all',
-                    body=event,
-                    conferenceDataVersion=1
+                    body=event
                 ).execute()
 
             await self._execute_sync(make_request)
             
         except Exception as e:
+            # If the event was not found (404), log a warning and return gracefully to avoid retrying
+            if hasattr(e, 'resp') and e.resp.status == 404:
+                logger.warning(f"Google Calendar event {event_id} not found (404). Skipping update.")
+                return
             logger.error(f"Error updating GCal event: {e}")
             raise e
 
@@ -240,6 +233,9 @@ class CalendarService:
             await self._execute_sync(make_request)
             
         except Exception as e:
+            if hasattr(e, 'resp') and e.resp.status == 404:
+                logger.warning(f"Google Calendar event {event_id} already deleted or not found (404).")
+                return
             logger.error(f"Error deleting GCal event {event_id}: {e}")
 
 calendar_service = CalendarService()

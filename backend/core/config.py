@@ -1,4 +1,3 @@
-from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
 
@@ -18,19 +17,31 @@ class Settings(BaseSettings):
     # Google Configuration
     google_calendar_id: str = "primary"
     google_sheet_id: str = ""
+    google_credentials_b64: str = ""
     google_credentials_file: str = "credentials.json"
 
-    # AI Configuration
-    gemini_api_key: str = Field("", alias="GEMINI_API_KEY")
-    groq_api_key: str = Field("", alias="GROQ_API_KEY")
+    # CRM Configuration
+    crm_api_url: str = "https://capi.acceleratorx.org/classes"
+    crm_bearer_token: str = ""
+
+    # JWT Authentication Configuration
+    jwt_secret: str = "super-secret-key-change-in-production-zoom-scheduler"
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 1440
+
+    # SMTP Configuration for Email Verification
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from: str = "noreply@zoom-scheduler.com"
+    app_url: str = "http://localhost:5173"
+    backend_url: str = "http://localhost:8000"
 
     # Application Defaults
     timezone_default: str = "Asia/Kolkata"
     class_duration_minutes: int = 90
-
-    # Auth / SMTP Configuration
-    smtp_email: str = Field("", alias="SMTP_EMAIL")
-    smtp_password: str = Field("", alias="SMTP_PASSWORD")
+    gemini_api_key: str = ""
 
     # CORS Configuration
     cors_allow_origins: str = "*"

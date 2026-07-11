@@ -10,12 +10,9 @@ from integrations.google_calendar.client import calendar_service
 logger = logging.getLogger(__name__)
 
 async def handle_class_created(created_class: ClassSchema):
-    logger.info(f"Listener received class_created for: {created_class.topic_name}")
     if not created_class.mentor_email:
-        logger.warning(f"No mentor_email found for class {created_class.id}. Skipping calendar creation.")
         return
     
-    logger.info(f"Creating GCal event for mentor: {created_class.mentor_email}")
     topic = f"{created_class.course_name} - {created_class.topic_name}"
     try:
         event_id = await calendar_service.create_event(
@@ -29,7 +26,6 @@ async def handle_class_created(created_class: ClassSchema):
         )
         
         if event_id:
-            logger.info(f"GCal event created with ID: {event_id}")
             try:
                 async with async_session_factory() as db:
                     await db.execute(
@@ -45,10 +41,8 @@ async def handle_class_created(created_class: ClassSchema):
                 except Exception as rollback_exc:
                     logger.error(f"CRITICAL: Failed to delete orphaned GCal event {event_id}: {rollback_exc}")
                 raise db_exc
-        else:
-            logger.warning("Calendar event creation returned no ID.")
     except Exception as e:
-        logger.error(f"Calendar creation listener failed: {e}", exc_info=True)
+        logger.error(f"Calendar creation listener failed: {e}")
 
 async def handle_class_updated(updated_class: ClassSchema):
     topic = f"{updated_class.course_name} - {updated_class.topic_name}"
