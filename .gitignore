@@ -50,3 +50,6 @@ POC.md
 
 
 
+
+# runtime / scratch
+*.pid
