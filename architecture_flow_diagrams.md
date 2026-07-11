@@ -193,15 +193,15 @@ This flowchart illustrates the logic flow triggered when an administrator execut
 
 ```mermaid
 flowchart TD
-    Start([Admin triggers Zoom Sync]) --> AuthCheck{Zoom S2S credentials present?}
+    Start([Admin triggers Zoom Sync]) --> AuthCheck{"Zoom S2S credentials present?"}
     AuthCheck -- No --> Warn[Log warning & return HTTP 401/403] --> End([Sync Finished])
     AuthCheck -- Yes --> FetchLocal[Fetch all local Classes from SQLite]
     
-    FetchLocal --> AttemptBulk{Attempt Bulk List:<br>GET /users/{userId}/meetings}
+    FetchLocal --> AttemptBulk{"Attempt Bulk List:<br>GET /users/{userId}/meetings"}
     
     %% Bulk Path
     AttemptBulk -- Success (200 OK) --> CompareBulk[Compare local Zoom IDs with retrieved list]
-    CompareBulk --> LoopBulk{Iterate local records}
+    CompareBulk --> LoopBulk{"Iterate local records"}
     
     LoopBulk -- "ID exists in local DB but missing on Zoom" --> DeleteLocal[Delete Class locally + delete GCal event]
     LoopBulk -- "ID exists on Zoom but missing in local DB" --> ImportLocal[Import session into SQLite under 'Synced from Zoom']
@@ -217,8 +217,8 @@ flowchart TD
     %% Fallback Path
     AttemptBulk -- "Failure (403 Forbidden / 401)" --> WarnFallback[Log Warning: Bulk Listing blocked.<br>Switching to Surgical Sync Fallback]
     
-    WarnFallback --> LoopSurgical{Iterate each local Class session}
-    LoopSurgical --> GetMeeting{GET /meetings/{meetingId}}
+    WarnFallback --> LoopSurgical{"Iterate each local Class session"}
+    LoopSurgical --> GetMeeting{"GET /meetings/{meetingId}"}
     
     GetMeeting -- "Success (200 OK)" --> KeepSurgical[Keep class unchanged]
     GetMeeting -- "Failure (404 Not Found)" --> DeleteSurgical[Delete class from local SQLite + remove GCal event]
