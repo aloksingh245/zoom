@@ -6,7 +6,7 @@ from core.config import settings
 logger = logging.getLogger(__name__)
 
 class CRMService:
-    """Service to handle synchronization with the external AcceleratorX CRM."""
+    """Service to handle synchronization with the external Partner CRM."""
     
     def __init__(self):
         self.api_url = settings.crm_api_url

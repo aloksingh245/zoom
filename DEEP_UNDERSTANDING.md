@@ -48,7 +48,7 @@
           ▼                 ▼                  ▼                ▼
     ┌──────────┐    ┌──────────────┐  ┌──────────────────┐ ┌──────────┐
     │  SQLite  │    │  Zoom API v2 │  │  Google APIs     │ │ CRM API  │
-    │sql_app.db│    │ (M2M OAuth)  │  │ Calendar, Sheets │ │AccelerX  │
+    │sql_app.db│    │ (M2M OAuth)  │  │ Calendar, Sheets │ │PartnerCRM│
     └──────────┘    └──────────────┘  └──────────────────┘ └──────────┘
 ```
 
@@ -104,7 +104,7 @@ zoom-scheduler/
 │   │   │   ├── client.py     → SheetsService (Service Account / aiogoogle)
 │   │   │   └── listeners.py  → Event bus handlers for sheet logging
 │   │   └── crm/
-│   │       ├── client.py     → CRMService (httpx POST to AcceleratorX)
+│   │       ├── client.py     → CRMService (httpx POST to Partner CRM)
 │   │       └── listeners.py  → Event bus handlers for CRM sync
 │   ├── main.py               → FastAPI app, startup, routers
 │   ├── pyproject.toml        → Python dependencies (uv-managed)
@@ -242,7 +242,7 @@ Admin fills form → frontend validates (not past, client-side)
   → emit "class_created" event (non-blocking background tasks):
        ├── GCal listener    → create Calendar event → save calendar_event_id to DB
        ├── Sheets listener  → append row → save sheet_row_id to DB
-       └── CRM listener     → POST to AcceleratorX CRM API
+       └── CRM listener     → POST to Partner CRM API
 ```
 
 ### 2. UPDATE
@@ -304,7 +304,7 @@ await event_bus.emit("class_created", class_data)
 |---|---|---|
 | `class_created` | `google_calendar` | Create GCal event, save `calendar_event_id` |
 | `class_created` | `google_sheets` | Append row, save `sheet_row_id` |
-| `class_created` | `crm` | POST class data to AcceleratorX CRM |
+| `class_created` | `crm` | POST class data to Partner CRM |
 | `class_updated` | All 3 | Update in GCal / Sheets / CRM |
 | `class_deleted` | All 3 | Delete from GCal / Sheets / CRM |
 
@@ -360,10 +360,10 @@ Zoom Meeting ID | Zoom Link | Assignment/Agenda | Status
 
 ---
 
-## 🏢 CRM Integration (AcceleratorX)
+## 🏢 CRM Integration (Partner CRM)
 
 ### CRMService (`integrations/crm/client.py`)
-- Simple `httpx.AsyncClient` POST to `https://capi.acceleratorx.org/classes`
+- Simple `httpx.AsyncClient` POST to `https://capi.partnercrm.org/classes`
 - Bearer token from `settings.crm_bearer_token`
 - Graceful stub: if token is empty or `"YOUR_TOKEN"` → logs stub, returns `"stub_crm_id"`
 - Returns `CRM ID` (field: `data.Id`) on success
@@ -486,7 +486,7 @@ view === 'dashboard' | 'calendar' | 'courses' | 'settings'
 | **Zoom** | Zoom API v2, Server-to-Server OAuth (M2M) + Bearer fallback |
 | **Google Calendar** | OAuth2 PKCE (user token.json), google-auth-oauthlib |
 | **Google Sheets** | Service Account, aiogoogle (async) |
-| **CRM** | AcceleratorX REST API (httpx) |
+| **CRM** | Partner CRM REST API (httpx) |
 | **Email** | Gmail SMTP (App Password) via smtplib |
 | **AI** | Gemini API (httpx async) |
 | **Retry** | Custom `async_retry` decorator (exponential backoff) |

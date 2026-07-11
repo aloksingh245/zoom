@@ -1,6 +1,6 @@
 # 📅 Zoom Class Scheduler — Core Platform
 
-An advanced scheduling platform designed to coordinate and manage virtual class sessions. The system integrates synchronously with the **Zoom API** for meeting provisioning, and utilizes an asynchronous event-driven architecture to coordinate secondary integrations: **Google Calendar** (OAuth PKCE), **Google Sheets** (Service Account logs), and **AcceleratorX CRM**. The platform also features an interactive, role-based week calendar UI and a built-in streaming **AI Agent assistant** powered by Google Gemini and ChromaDB RAG.
+An advanced scheduling platform designed to coordinate and manage virtual class sessions. The system integrates synchronously with the **Zoom API** for meeting provisioning, and utilizes an asynchronous event-driven architecture to coordinate secondary integrations: **Google Calendar** (OAuth PKCE), **Google Sheets** (Service Account logs), and **Partner CRM**. The platform also features an interactive, role-based week calendar UI and a built-in streaming **AI Agent assistant** powered by Google Gemini and ChromaDB RAG.
 
 ---
 
@@ -10,7 +10,7 @@ An advanced scheduling platform designed to coordinate and manage virtual class 
 *   🎥 **Zoom Video Conferencing (Sync Path)**: Automated creation, updating, and cancellation of Zoom meetings.
 *   📅 **Google Calendar Sync (Async Path)**: Bi-directional event synchronization with user accounts via PKCE OAuth.
 *   📊 **Google Sheets Logging (Async Path)**: Asynchronous reporting of class metrics using service account credentials.
-*   🏢 **CRM Webhook Updates (Async Path)**: Automated class record updates pushed to AcceleratorX CRM.
+*   🏢 **CRM Webhook Updates (Async Path)**: Automated class record updates pushed to Partner CRM.
 *   🤖 **Gemini-Powered AI Parsing**: Extract schedule parameters from natural language prompts to auto-populate class forms.
 *   💬 **Floating AI Chatbot (ZoomBot)**: A role-aware assistant answering workspace queries and scheduling classes semantically utilizing ChromaDB RAG.
 *   🔐 **Role-Based JWT Authentication**: Secure access limits for Admin (full CRUD), Mentor (assigned classes view only), and Student (view only) accounts.
@@ -35,7 +35,7 @@ An advanced scheduling platform designed to coordinate and manage virtual class 
                ▼              ▼              ▼              ▼
 ┌──────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐
 │    SQLite    │ │  Zoom API  │ │ Google API │ │  CRM API   │
-│  sql_app.db  │ │ M2M OAuth  │ │  Calendar  │ │AcceleratorX│
+│  sql_app.db  │ │ M2M OAuth  │ │  Calendar  │ │Partner CRM │
 └──────────────┘ └────────────┘ └────────────┘ └────────────┘
 ```
 

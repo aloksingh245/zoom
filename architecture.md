@@ -39,7 +39,7 @@ Key architectural goals include:
          │ Rollback on error      │ OAuth PKCE Flow        
          ▼                        ▼                        
 ┌─────────────────┐      ┌─────────────────┐      ┌─────────────────┐
-│ Zoom API (v2)   │      │ token.json      │      │ AcceleratorX    │
+│ Zoom API (v2)   │      │ token.json      │      │ Partner CRM     │
 │ S2S OAuth       │      │ Credentials     │      │ CRM Client      │
 └─────────────────┘      └─────────────────┘      └─────────────────┘
 ```

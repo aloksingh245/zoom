@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     google_credentials_file: str = "credentials.json"
 
     # CRM Configuration
-    crm_api_url: str = "https://capi.acceleratorx.org/classes"
+    crm_api_url: str = "https://capi.partnercrm.org/classes"
     crm_bearer_token: str = ""
 
     # JWT Authentication Configuration

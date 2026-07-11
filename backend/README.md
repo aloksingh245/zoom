@@ -87,7 +87,7 @@ backend/
 │   ├── zoom/            # Zoom API Client (Server-to-Server)
 │   ├── google_calendar/ # Google Calendar API Client
 │   ├── google_sheets/   # Google Sheets Client (Service Account)
-│   └── crm/             # AcceleratorX CRM Sync Client
+│   └── crm/             # Partner CRM Sync Client
 ├── tests/
 │   ├── conftest.py      # Global pytest SMTP mocks
 │   ├── unit/            # Isolated unit tests
