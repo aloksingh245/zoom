@@ -41,9 +41,20 @@ class SheetsService:
 
         return None
 
+    def is_stub(self) -> bool:
+        """Check if Google Sheets integration should run in STUB mode."""
+        if not self._creds or not settings.google_sheet_id:
+            return True
+        sheet_id = settings.google_sheet_id.lower()
+        for placeholder in ["sheet_id_123", "placeholder", "your_sheet_id", "test_sheet"]:
+            if placeholder in sheet_id:
+                return True
+        return False
+
     async def initialize_headers(self) -> None:
         """Write the header row to Sheet1!A1:M1 if not already present."""
-        if not self._creds or not settings.google_sheet_id:
+        if self.is_stub():
+            logger.info("[STUB] Skipping Sheet headers initialization.")
             return
         
         headers = [
@@ -79,7 +90,7 @@ class SheetsService:
 
     async def append_row(self, row_data: List[Any]) -> str:
         """Append a new log row to the Google Sheet."""
-        if not self._creds or not settings.google_sheet_id:
+        if self.is_stub():
             logger.info(f"[STUB] Appending to sheet: {row_data}")
             return f"stub_row_{id(row_data)}"
 
@@ -108,7 +119,7 @@ class SheetsService:
 
     async def update_row(self, row_id: str, row_data: List[Any]) -> None:
         """Update an existing log row (row_id here is the cell range)."""
-        if not self._creds or not settings.google_sheet_id:
+        if self.is_stub() or not row_id or row_id.startswith("stub_row_"):
             logger.info(f"[STUB] Updating sheet row {row_id}")
             return
 

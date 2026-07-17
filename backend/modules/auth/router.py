@@ -1,12 +1,40 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from uuid import uuid4
 from core.database import get_db
 from modules.auth import models, schemas, utils
 from modules.auth.dependencies import get_current_user
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
+
+async def background_calendar_sync():
+    """Background task to sync the calendar with Google Calendar on successful admin login."""
+    from core.database import async_session_factory
+    from modules.classes.service import class_service
+    from integrations.google_calendar.client import calendar_service
+    import asyncio
+    
+    # 1. Check if calendar is authenticated (credentials exist)
+    try:
+        creds = await asyncio.to_thread(calendar_service._get_credentials)
+        if not creds:
+            logger.info("Google Calendar not authenticated/connected. Skipping auto-sync on login.")
+            return
+    except Exception as e:
+        logger.error(f"Error checking Google Calendar credentials: {e}")
+        return
+
+    logger.info("Starting background Google Calendar sync on login...")
+    try:
+        async with async_session_factory() as db:
+            result = await class_service.sync_with_calendar(db)
+            logger.info(f"Background Google Calendar sync completed successfully: {result}")
+    except Exception as exc:
+        logger.error(f"Error executing background calendar sync: {exc}")
 
 @router.post("/signup", response_model=schemas.UserOut, status_code=status.HTTP_201_CREATED)
 async def signup(payload: schemas.UserCreate, db: AsyncSession = Depends(get_db)):
@@ -57,7 +85,11 @@ async def verify_email(token: str, db: AsyncSession = Depends(get_db)):
     return {"message": "Email verified successfully! You can now log in."}
 
 @router.post("/login", response_model=schemas.Token)
-async def login(payload: schemas.UserLogin, db: AsyncSession = Depends(get_db)):
+async def login(
+    payload: schemas.UserLogin,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db)
+):
     result = await db.execute(select(models.User).where(models.User.email == payload.email))
     user = result.scalar_one_or_none()
     
@@ -77,6 +109,11 @@ async def login(payload: schemas.UserLogin, db: AsyncSession = Depends(get_db)):
     access_token = utils.create_access_token(
         data={"sub": user.email, "role": user.role}
     )
+
+    # Auto-sync Google Calendar in background on admin login
+    if user.role == "admin":
+        background_tasks.add_task(background_calendar_sync)
+
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/me", response_model=schemas.UserOut)

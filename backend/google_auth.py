@@ -19,7 +19,7 @@ def main():
     )
     
     # This will open a browser window for you to log in
-    creds = flow.run_local_server(port=0)
+    creds = flow.run_local_server(port=0, access_type="offline", prompt="consent")
     
     # Save the credentials for the next run
     with open("token.json", "w") as token:

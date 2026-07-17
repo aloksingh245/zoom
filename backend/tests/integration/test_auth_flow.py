@@ -83,3 +83,48 @@ def test_auth_full_flow():
     cursor.execute("DELETE FROM users WHERE email=?", (email,))
     conn.commit()
     conn.close()
+
+def test_login_triggers_calendar_sync():
+    from unittest.mock import patch
+    email = "admin_sync_trigger@example.com"
+    signup_payload = {
+        "email": email,
+        "password": "strongpassword123",
+        "role": "admin"
+    }
+    
+    # 1. Clean DB
+    conn = sqlite3.connect("sql_app.db")
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM users WHERE email=?", (email,))
+    conn.commit()
+    conn.close()
+
+    # 2. Signup & Verify
+    client.post("/auth/signup", json=signup_payload)
+    
+    conn = sqlite3.connect("sql_app.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT verification_token FROM users WHERE email=?", (email,))
+    token = cursor.fetchone()[0]
+    conn.close()
+    
+    client.post(f"/auth/verify-email?token={token}")
+
+    # 3. Patch background_calendar_sync and login
+    login_payload = {
+        "email": email,
+        "password": "strongpassword123"
+    }
+    with patch("modules.auth.router.background_calendar_sync") as mock_sync:
+        response = client.post("/auth/login", json=login_payload)
+        assert response.status_code == 200
+        # BackgroundTasks run before response returns in TestClient
+        assert mock_sync.call_count == 1
+
+    # 4. Clean DB
+    conn = sqlite3.connect("sql_app.db")
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM users WHERE email=?", (email,))
+    conn.commit()
+    conn.close()

@@ -178,6 +178,7 @@ class ClassService:
         await self._check_conflicts(db, date, start_time, timezone, duration_minutes, exclude_id=class_id)
 
         topic = f"{new_course_name} - {topic_name}"
+        recreated_meeting = None
         try:
             await zoom_service.update_meeting(
                 meeting_id=existing.zoom_meeting_id,
@@ -188,6 +189,24 @@ class ClassService:
                 timezone=timezone,
                 duration=duration_minutes,
             )
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code == 404:
+                logger.warning(f"Zoom meeting {existing.zoom_meeting_id} not found on Zoom (possibly a stub meeting or deleted). Re-creating meeting...")
+                try:
+                    recreated_meeting = await zoom_service.create_meeting(
+                        topic=topic,
+                        agenda=assignment_name,
+                        date=date,
+                        start_time=start_time,
+                        timezone=timezone,
+                        duration=duration_minutes,
+                    )
+                except Exception as create_exc:
+                    logger.error(f"Failed to re-create Zoom meeting: {create_exc}")
+                    raise HTTPException(status_code=502, detail=f"Zoom meeting not found on server and re-creation failed: {create_exc}")
+            else:
+                logger.error(f"Zoom update failed: {exc}")
+                raise HTTPException(status_code=502, detail=f"Zoom integration failed: {exc}")
         except Exception as exc:
             logger.error(f"Zoom update failed: {exc}")
             raise HTTPException(status_code=502, detail=f"Zoom integration failed: {exc}")
@@ -201,6 +220,11 @@ class ClassService:
                 db_class.course_id = course.id
                 db_class.course_name = course.name
             db_class.timezone = timezone
+            
+            # If the meeting was recreated, update the Zoom ID and URL in database
+            if recreated_meeting:
+                db_class.zoom_meeting_id = str(recreated_meeting.get("id", ""))
+                db_class.zoom_join_url = recreated_meeting.get("join_url", "")
             
             for key, value in update_data.items():
                 if hasattr(db_class, key):

@@ -200,7 +200,7 @@ async def sync_with_zoom() -> dict[str, Any]:
 async def sync_with_calendar() -> dict[str, Any]:
     """Synchronizes all class events in the database with Google Calendar."""
     async with async_session_factory() as db:
-        res = await class_service.sync_calendar(db)
+        res = await class_service.sync_with_calendar(db)
         return res
 
 

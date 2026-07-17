@@ -26,7 +26,19 @@ class ZoomService:
             cls._instance._access_token_expiry = None
         return cls._instance
 
+    def is_stub(self) -> bool:
+        account_id = settings.zoom_account_id
+        client_id = settings.zoom_client_id
+        if not account_id or not client_id or not settings.zoom_client_secret:
+            return True
+        for placeholder in ["test", "your_", "placeholder", "client_id", "account_id"]:
+            if placeholder in account_id.lower() or placeholder in client_id.lower():
+                return True
+        return False
+
     def ensure_configured(self) -> None:
+        if self.is_stub():
+            return
         has_oauth = bool(settings.zoom_account_id and settings.zoom_client_id and settings.zoom_client_secret)
         has_token = bool(settings.zoom_bearer_token)
         if not (has_oauth or has_token):
@@ -38,6 +50,9 @@ class ZoomService:
             raise RuntimeError("Zoom user missing. Set ZOOM_USER_ID.")
 
     async def get_access_token(self) -> str:
+        if self.is_stub():
+            return "stub_zoom_access_token"
+
         if self._access_token and self._access_token_expiry:
             if datetime.utcnow() < self._access_token_expiry:
                 return self._access_token
@@ -93,6 +108,16 @@ class ZoomService:
     ) -> Dict[str, Any]:
         self.ensure_configured()
         timezone = self.normalize_timezone(timezone)
+
+        if self.is_stub():
+            import random
+            stub_id = str(random.randint(1000000000, 9999999999))
+            logger.warning(f"[STUB] Creating stub Zoom meeting {stub_id} for topic '{topic}'")
+            return {
+                "id": stub_id,
+                "join_url": f"https://zoom.us/j/{stub_id}"
+            }
+
         access_token = await self.get_access_token()
         
         payload = {
@@ -129,6 +154,11 @@ class ZoomService:
     ) -> None:
         self.ensure_configured()
         timezone = self.normalize_timezone(timezone)
+
+        if self.is_stub():
+            logger.warning(f"[STUB] Updating stub Zoom meeting {meeting_id}")
+            return
+
         access_token = await self.get_access_token()
         
         payload = {
@@ -153,6 +183,11 @@ class ZoomService:
 
     async def delete_meeting(self, *, meeting_id: str) -> None:
         self.ensure_configured()
+
+        if self.is_stub():
+            logger.warning(f"[STUB] Deleting stub Zoom meeting {meeting_id}")
+            return
+
         access_token = await self.get_access_token()
         async with httpx.AsyncClient(timeout=20) as client:
             resp = await client.delete(
@@ -164,6 +199,11 @@ class ZoomService:
     async def list_meetings(self) -> Dict[str, Any]:
         """List all meetings for the configured user."""
         self.ensure_configured()
+
+        if self.is_stub():
+            logger.warning("[STUB] Listing Zoom meetings - returning empty list")
+            return {"meetings": []}
+
         access_token = await self.get_access_token()
         async with httpx.AsyncClient(timeout=20) as client:
             resp = await client.get(
@@ -177,6 +217,14 @@ class ZoomService:
     async def get_meeting(self, meeting_id: str) -> Dict[str, Any]:
         """Fetch details for a specific meeting."""
         self.ensure_configured()
+
+        if self.is_stub():
+            logger.warning(f"[STUB] Getting stub Zoom meeting {meeting_id}")
+            return {
+                "id": meeting_id,
+                "join_url": f"https://zoom.us/j/{meeting_id}"
+            }
+
         access_token = await self.get_access_token()
         async with httpx.AsyncClient(timeout=20) as client:
             resp = await client.get(

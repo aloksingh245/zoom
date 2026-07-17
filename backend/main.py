@@ -20,6 +20,7 @@ from integrations.google_calendar.listeners import register_listeners as registe
 from integrations.google_sheets.listeners import register_listeners as register_sheets_listeners
 from integrations.crm.listeners import register_listeners as register_crm_listeners
 from modules.agent.listeners import register_listeners as register_agent_listeners
+from integrations.email.listeners import register_listeners as register_email_listeners
 
 # Import agent router & RAG initializer
 from modules.agent.router import router as agent_router
@@ -38,6 +39,7 @@ async def startup_event():
     register_sheets_listeners()
     register_crm_listeners()
     register_agent_listeners()
+    register_email_listeners()
     
     # Create DB tables
     async with engine.begin() as conn:
