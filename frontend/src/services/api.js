@@ -157,3 +157,20 @@ export async function chatAi(payload) {
     body: JSON.stringify(payload),
   })
 }
+
+// Super Admin Controls
+export async function listTenants() {
+  return request('/api/super-admin/tenants')
+}
+
+export async function toggleTenantActive(id) {
+  return request(`/api/super-admin/tenants/${id}/toggle-active`, {
+    method: 'POST',
+  })
+}
+
+export async function deleteTenant(id) {
+  return request(`/api/super-admin/tenants/${id}`, {
+    method: 'DELETE',
+  })
+}

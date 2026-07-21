@@ -11,8 +11,15 @@ logger = logging.getLogger(__name__)
 
 async def handle_class_created(created_class: ClassSchema):
     try:
+        # Load Tenant Settings
+        from modules.settings.models import TenantSettings
+        from sqlalchemy import select
+        async with async_session_factory() as db:
+            ts_res = await db.execute(select(TenantSettings).where(TenantSettings.tenant_id == created_class.tenant_id))
+            tenant_settings = ts_res.scalar_one_or_none()
+
         # Initialize headers if sheet is empty
-        await sheets_service.initialize_headers()
+        await sheets_service.initialize_headers(tenant_settings)
 
         row_data = [
             datetime.utcnow().isoformat() + "Z",
@@ -29,7 +36,7 @@ async def handle_class_created(created_class: ClassSchema):
             created_class.assignment_name or "",
             "Scheduled"
         ]
-        sheet_row_id = await sheets_service.append_row(row_data)
+        sheet_row_id = await sheets_service.append_row(row_data, tenant_settings)
         
         if sheet_row_id:
             async with async_session_factory() as db:
@@ -49,6 +56,13 @@ async def handle_class_updated(updated_class: ClassSchema):
         return
 
     try:
+        # Load Tenant Settings
+        from modules.settings.models import TenantSettings
+        from sqlalchemy import select
+        async with async_session_factory() as db:
+            ts_res = await db.execute(select(TenantSettings).where(TenantSettings.tenant_id == updated_class.tenant_id))
+            tenant_settings = ts_res.scalar_one_or_none()
+
         row_data = [
             datetime.utcnow().isoformat() + "Z",
             updated_class.id,
@@ -64,7 +78,7 @@ async def handle_class_updated(updated_class: ClassSchema):
             updated_class.assignment_name or "",
             "Updated"
         ]
-        await sheets_service.update_row(updated_class.sheet_row_id, row_data)
+        await sheets_service.update_row(updated_class.sheet_row_id, row_data, tenant_settings)
     except Exception as e:
         logger.error(f"Sheets update listener failed: {e}")
 
@@ -73,6 +87,13 @@ async def handle_class_deleted(deleted_class: ClassSchema):
         return
         
     try:
+        # Load Tenant Settings
+        from modules.settings.models import TenantSettings
+        from sqlalchemy import select
+        async with async_session_factory() as db:
+            ts_res = await db.execute(select(TenantSettings).where(TenantSettings.tenant_id == deleted_class.tenant_id))
+            tenant_settings = ts_res.scalar_one_or_none()
+
         # We don't delete the row, we mark it as cancelled
         row_data = [
             datetime.utcnow().isoformat() + "Z",
@@ -89,7 +110,7 @@ async def handle_class_deleted(deleted_class: ClassSchema):
             deleted_class.assignment_name or "",
             "CANCELLED"
         ]
-        await sheets_service.update_row(deleted_class.sheet_row_id, row_data)
+        await sheets_service.update_row(deleted_class.sheet_row_id, row_data, tenant_settings)
     except Exception as e:
         logger.error(f"Sheets delete listener failed: {e}")
 

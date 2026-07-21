@@ -143,14 +143,14 @@ export function AuthPage() {
             <div className="space-y-4">
               <div>
                 <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">
-                  Email Address
+                  Username or Email Address
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" size={18} />
                   <input
-                    type="email"
+                    type="text"
                     required
-                    placeholder="name@organization.com"
+                    placeholder="Alok007 or name@organization.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full pl-12 pr-4 py-3.5 bg-slate-900/60 border border-slate-800 rounded-2xl text-sm text-slate-100 placeholder-slate-600 focus:bg-slate-900 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all"

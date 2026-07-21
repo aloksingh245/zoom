@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     smtp_username: str = ""
     smtp_password: str = ""
     smtp_from: str = "noreply@zoom-scheduler.com"
+    email_user: str = ""
+    brevo_api_key: str = ""
     app_url: str = "http://localhost:5173"
     backend_url: str = "http://localhost:8000"
 
@@ -42,6 +44,10 @@ class Settings(BaseSettings):
     timezone_default: str = "Asia/Kolkata"
     class_duration_minutes: int = 90
     gemini_api_key: str = ""
+
+    # Master Admin Credentials
+    master_admin_username: str = "Alok007"
+    master_admin_password: str = "Alok@245singh"
 
     # CORS Configuration
     cors_allow_origins: str = "*"

@@ -41,22 +41,29 @@ class SheetsService:
 
         return None
 
-    def is_stub(self) -> bool:
+    def get_sheet_id(self, tenant_settings: Any = None) -> Optional[str]:
+        if tenant_settings and tenant_settings.google_sheet_id:
+            return tenant_settings.google_sheet_id
+        return settings.google_sheet_id
+
+    def is_stub(self, tenant_settings: Any = None) -> bool:
         """Check if Google Sheets integration should run in STUB mode."""
-        if not self._creds or not settings.google_sheet_id:
+        sheet_id = self.get_sheet_id(tenant_settings)
+        if not self._creds or not sheet_id:
             return True
-        sheet_id = settings.google_sheet_id.lower()
+        sheet_id_lower = sheet_id.lower()
         for placeholder in ["sheet_id_123", "placeholder", "your_sheet_id", "test_sheet"]:
-            if placeholder in sheet_id:
+            if placeholder in sheet_id_lower:
                 return True
         return False
 
-    async def initialize_headers(self) -> None:
+    async def initialize_headers(self, tenant_settings: Any = None) -> None:
         """Write the header row to Sheet1!A1:M1 if not already present."""
-        if self.is_stub():
+        if self.is_stub(tenant_settings):
             logger.info("[STUB] Skipping Sheet headers initialization.")
             return
         
+        sheet_id = self.get_sheet_id(tenant_settings)
         headers = [
             "Log Timestamp", "Class ID", "Course/Batch", "Topic", 
             "Mentor Email", "Date", "Start Time", "Duration (Mins)", 
@@ -69,7 +76,7 @@ class SheetsService:
                 # First check if A1 is empty or has headers
                 resp = await aiogoogle.as_service_account(
                     sheets_v4.spreadsheets.values.get(
-                        spreadsheetId=settings.google_sheet_id,
+                        spreadsheetId=sheet_id,
                         range='Sheet1!A1:M1'
                     )
                 )
@@ -78,7 +85,7 @@ class SheetsService:
                     # Sheet is empty, write headers
                     await aiogoogle.as_service_account(
                         sheets_v4.spreadsheets.values.update(
-                            spreadsheetId=settings.google_sheet_id,
+                            spreadsheetId=sheet_id,
                             range='Sheet1!A1',
                             valueInputOption='RAW',
                             json={'values': [headers]}
@@ -88,12 +95,13 @@ class SheetsService:
         except Exception as e:
             logger.error(f"Failed to initialize Sheet headers: {e}")
 
-    async def append_row(self, row_data: List[Any]) -> str:
+    async def append_row(self, row_data: List[Any], tenant_settings: Any = None) -> str:
         """Append a new log row to the Google Sheet."""
-        if self.is_stub():
+        if self.is_stub(tenant_settings):
             logger.info(f"[STUB] Appending to sheet: {row_data}")
             return f"stub_row_{id(row_data)}"
 
+        sheet_id = self.get_sheet_id(tenant_settings)
         async with Aiogoogle(service_account_creds=self._creds) as aiogoogle:
             sheets_v4 = await aiogoogle.discover("sheets", "v4")
             
@@ -105,7 +113,7 @@ class SheetsService:
             # Using 'A1' notation as range, Google will append to the end of the sheet automatically
             resp = await aiogoogle.as_service_account(
                 sheets_v4.spreadsheets.values.append(
-                    spreadsheetId=settings.google_sheet_id,
+                    spreadsheetId=sheet_id,
                     range='Sheet1!A1',
                     valueInputOption='RAW',
                     json=body
@@ -117,19 +125,20 @@ class SheetsService:
             logger.info(f"Google Sheet row appended to: {updated_range}")
             return updated_range
 
-    async def update_row(self, row_id: str, row_data: List[Any]) -> None:
+    async def update_row(self, row_id: str, row_data: List[Any], tenant_settings: Any = None) -> None:
         """Update an existing log row (row_id here is the cell range)."""
-        if self.is_stub() or not row_id or row_id.startswith("stub_row_"):
+        if self.is_stub(tenant_settings) or not row_id or row_id.startswith("stub_row_"):
             logger.info(f"[STUB] Updating sheet row {row_id}")
             return
 
+        sheet_id = self.get_sheet_id(tenant_settings)
         async with Aiogoogle(service_account_creds=self._creds) as aiogoogle:
             sheets_v4 = await aiogoogle.discover("sheets", "v4")
             body = {'values': [row_data]}
             
             await aiogoogle.as_service_account(
                 sheets_v4.spreadsheets.values.update(
-                    spreadsheetId=settings.google_sheet_id,
+                    spreadsheetId=sheet_id,
                     range=row_id,
                     valueInputOption='RAW',
                     json=body

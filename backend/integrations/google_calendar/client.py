@@ -19,25 +19,8 @@ class CalendarService:
     """Service to handle Google Calendar operations using OAuth User Credentials or Service Account."""
     
     def _get_credentials(self):
-        # 1. Try OAuth User Credentials (token.json)
-        if os.path.exists("token.json"):
-            try:
-                creds = Credentials.from_authorized_user_file("token.json")
-                if creds.expired and creds.refresh_token:
-                    creds.refresh(Request())
-                    # Save refreshed token
-                    with open("token.json", "w") as token:
-                        token.write(creds.to_json())
-                return creds
-            except Exception as e:
-                logger.error(f"Error loading/refreshing token.json: {e}")
-                if "invalid_grant" in str(e).lower():
-                    logger.warning("Token has been revoked or is invalid. Deleting token.json to prevent repeated errors.")
-                    try:
-                        os.remove("token.json")
-                    except Exception as rm_err:
-                        logger.error(f"Failed to remove invalid token.json: {rm_err}")
-        
+        # Google Calendar sync has been disabled.
+        # Credentials are no longer loaded from token.json.
         return None
 
     def _execute_sync(self, func, *args, **kwargs):
@@ -91,9 +74,11 @@ class CalendarService:
             'description': f'Zoom Meeting: {zoom_link}\nScheduled via Zoom Scheduler.',
             'start': {
                 'dateTime': start_dt,
+                'timeZone': timezone,
             },
             'end': {
                 'dateTime': end_dt,
+                'timeZone': timezone,
             },
             'attendees': attendees,
             'reminders': {
@@ -156,7 +141,8 @@ class CalendarService:
                 if topic: event['summary'] = topic
                 if zoom_link: event['description'] = f'Zoom Meeting: {zoom_link}\nUpdated via Zoom Scheduler.'
                 if date and start_time:
-                    tz = ZoneInfo(timezone or event['start'].get('timeZone', 'UTC'))
+                    tz_name = timezone or event['start'].get('timeZone', 'UTC')
+                    tz = ZoneInfo(tz_name)
                     start_dt_naive = datetime.fromisoformat(f"{date}T{start_time}:00")
                     start_dt_aware = start_dt_naive.replace(tzinfo=tz)
                     
@@ -165,8 +151,14 @@ class CalendarService:
                     end_dt_aware = start_dt_aware + timedelta(minutes=duration)
                     end_dt_utc = end_dt_aware.astimezone(ZoneInfo("UTC"))
                     
-                    event['start'] = {'dateTime': start_dt_utc.isoformat().replace("+00:00", "Z")}
-                    event['end'] = {'dateTime': end_dt_utc.isoformat().replace("+00:00", "Z")}
+                    event['start'] = {
+                        'dateTime': start_dt_utc.isoformat().replace("+00:00", "Z"),
+                        'timeZone': tz_name
+                    }
+                    event['end'] = {
+                        'dateTime': end_dt_utc.isoformat().replace("+00:00", "Z"),
+                        'timeZone': tz_name
+                    }
                 
                 if mentor_email:
                     if organizer_email and mentor_email.lower() != organizer_email.lower():

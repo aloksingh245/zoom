@@ -61,6 +61,17 @@ export function Sidebar({ view, setView, user, onLogout, onSyncCalendar, calenda
           active={view === 'courses'} 
           onClick={() => setView('courses')} 
         />
+        {user?.role === 'super_admin' && (
+          <div className="pt-4 mt-4 border-t border-slate-100">
+            <p className="px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Master Controls</p>
+            <NavItem 
+              icon={<Users size={20} />} 
+              label="Manage Tenants" 
+              active={view === 'super_admin'} 
+              onClick={() => setView('super_admin')} 
+            />
+          </div>
+        )}
         {isAdmin && (
           <div className="pt-4 mt-4 border-t border-slate-100">
             <p className="px-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Management</p>
@@ -81,31 +92,6 @@ export function Sidebar({ view, setView, user, onLogout, onSyncCalendar, calenda
       </nav>
 
       <div className="p-6">
-        {isAdmin && (
-          <div className="p-5 bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-[2rem] text-white shadow-lg shadow-indigo-200">
-            <div className="flex justify-between items-start mb-4">
-              <div className="p-2 bg-white/20 rounded-xl"><Bell size={18} /></div>
-              <span className="text-[10px] font-bold bg-white/20 px-2 py-1 rounded-full uppercase">Update</span>
-            </div>
-            <p className="text-sm font-bold leading-tight">Sync your calendar with Google Calendar</p>
-            {calendarConnected ? (
-              <button 
-                onClick={handleSync}
-                disabled={syncing}
-                className="mt-4 w-full py-2 bg-white text-indigo-700 text-xs font-bold rounded-xl hover:bg-indigo-50 transition-colors disabled:opacity-80 disabled:cursor-not-allowed cursor-pointer"
-              >
-                {syncing ? 'Syncing...' : synced ? '✓ Synced!' : 'Sync Now'}
-              </button>
-            ) : (
-              <button 
-                onClick={onConnectCalendar}
-                className="mt-4 w-full py-2 bg-white text-indigo-700 text-xs font-bold rounded-xl hover:bg-indigo-50 transition-colors cursor-pointer"
-              >
-                Connect Now
-              </button>
-            )}
-          </div>
-        )}
         
         <button 
           onClick={onLogout}

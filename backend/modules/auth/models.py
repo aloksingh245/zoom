@@ -9,8 +9,10 @@ class User(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid4()))
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
-    role = Column(String, default="admin", nullable=False) # Roles: admin, mentor, student
+    role = Column(String, default="admin", nullable=False) # Roles: super_admin, admin, mentor, student
     is_verified = Column(Boolean, default=False, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    tenant_id = Column(String, nullable=True)
     verification_token = Column(String, nullable=True)
     reset_token = Column(String, nullable=True)
     reset_token_expires = Column(DateTime, nullable=True)

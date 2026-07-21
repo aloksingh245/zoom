@@ -40,22 +40,46 @@ def decode_access_token(token: str) -> dict | None:
         logger.warning(f"JWT decode failed: {e}")
         return None
 
-def send_verification_email(email: str, token: str):
-    verification_link = f"{settings.app_url}/verify-email?token={token}"
-    
-    if not settings.smtp_username or not settings.smtp_password:
-        logger.warning(f"[SMTP MOCK] No SMTP credentials configured. Verification email simulated.")
+import urllib.request
+import json
+
+def _send_brevo_email(to_email: str, subject: str, body: str, fallback_message: str, link: str):
+    is_mock = not settings.brevo_api_key
+    if is_mock:
+        logger.warning(f"[EMAIL MOCK] No API key configured. Email simulated.")
         print(f"\n==================================================")
-        print(f"📧 [SMTP MOCK] Verification email sent to: {email}")
-        print(f"🔗 Verification Link: {verification_link}")
+        print(f"📧 [EMAIL MOCK] Email sent to: {to_email}")
+        print(f"🔗 Link: {link}")
         print(f"==================================================\n")
         return
-        
-    msg = MIMEMultipart()
-    msg['From'] = settings.smtp_from
-    msg['To'] = email
-    msg['Subject'] = "Verify your email - Zoom Scheduler"
+
+    url = "https://api.brevo.com/v3/smtp/email"
+    headers = {
+        "accept": "application/json",
+        "api-key": settings.brevo_api_key,
+        "content-type": "application/json"
+    }
+    data = {
+        "sender": {"name": "Zoom Scheduler", "email": settings.email_user or settings.smtp_from},
+        "to": [{"email": to_email}],
+        "subject": subject,
+        "htmlContent": body
+    }
     
+    try:
+        req = urllib.request.Request(url, data=json.dumps(data).encode("utf-8"), headers=headers, method="POST")
+        with urllib.request.urlopen(req) as response:
+            response.read()
+            logger.info(f"Email successfully sent via Brevo API to {to_email}")
+    except Exception as e:
+        logger.error(f"Failed to send email to {to_email} due to API error: {e}")
+        print(f"\n==================================================")
+        print(f"📧 {fallback_message} Recovery link for {to_email}:")
+        print(f"🔗 Link: {link}")
+        print(f"==================================================\n", flush=True)
+
+def send_verification_email(email: str, token: str):
+    verification_link = f"{settings.app_url}/verify-email?token={token}"
     body = f"""
     <html>
         <body>
@@ -72,34 +96,10 @@ def send_verification_email(email: str, token: str):
         </body>
     </html>
     """
-    msg.attach(MIMEText(body, 'html'))
-    
-    try:
-        with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
-            server.starttls()
-            server.login(settings.smtp_username, settings.smtp_password)
-            server.sendmail(settings.smtp_from, email, msg.as_string())
-        logger.info(f"Verification email successfully sent to {email}")
-    except Exception as e:
-        logger.error(f"Failed to send email to {email}: {e}")
-        raise e
+    _send_brevo_email(email, "Verify your email - Zoom Scheduler", body, "[API FALLBACK] Verification email failed.", verification_link)
 
 def send_reset_password_email(email: str, token: str):
     reset_link = f"{settings.app_url}/reset-password?token={token}"
-    
-    if not settings.smtp_username or not settings.smtp_password:
-        logger.warning(f"[SMTP MOCK] No SMTP credentials configured. Reset password email simulated.")
-        print(f"\n==================================================")
-        print(f"📧 [SMTP MOCK] Reset password email sent to: {email}")
-        print(f"🔗 Reset Password Link: {reset_link}")
-        print(f"==================================================\n")
-        return
-        
-    msg = MIMEMultipart()
-    msg['From'] = settings.smtp_from
-    msg['To'] = email
-    msg['Subject'] = "Reset your password - Zoom Scheduler"
-    
     body = f"""
     <html>
         <body>
@@ -116,15 +116,5 @@ def send_reset_password_email(email: str, token: str):
         </body>
     </html>
     """
-    msg.attach(MIMEText(body, 'html'))
-    
-    try:
-        with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
-            server.starttls()
-            server.login(settings.smtp_username, settings.smtp_password)
-            server.sendmail(settings.smtp_from, email, msg.as_string())
-        logger.info(f"Reset password email successfully sent to {email}")
-    except Exception as e:
-        logger.error(f"Failed to send reset email to {email}: {e}")
-        raise e
+    _send_brevo_email(email, "Reset your password - Zoom Scheduler", body, "[API FALLBACK] Reset email failed.", reset_link)
 

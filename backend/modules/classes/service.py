@@ -22,23 +22,30 @@ logger = logging.getLogger(__name__)
 class ClassService:
     def _validate_not_past(self, date_str: str, time_str: str, timezone: str) -> None:
         try:
-            local_dt = datetime.fromisoformat(f"{date_str}T{time_str}:00").replace(
-                tzinfo=ZoneInfo(timezone)
-            )
+            from datetime import datetime
+            from zoneinfo import ZoneInfo
+            tz = ZoneInfo(timezone)
+            # Only restrict dates that are strictly in the past (before today)
+            class_date = datetime.fromisoformat(f"{date_str}T00:00:00").replace(tzinfo=tz).date()
+            today_date = datetime.now(tz=tz).date()
+            if class_date < today_date:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Start date cannot be in the past.",
+                )
+        except HTTPException:
+            raise
         except Exception as exc:
             raise HTTPException(status_code=400, detail=f"Invalid date/time: {exc}")
 
-        now_local = datetime.now(tz=ZoneInfo(timezone))
-        if local_dt <= now_local:
-            raise HTTPException(
-                status_code=400,
-                detail="Start time must be in the future.",
-            )
-
-    async def _check_conflicts(self, db: AsyncSession, date: str, start_time: str, timezone: str, duration_minutes: int, exclude_id: str | None = None) -> None:
+    async def _check_conflicts(self, db: AsyncSession, date: str, start_time: str, timezone: str, duration_minutes: int, mentor_email: str | None, exclude_id: str | None = None, tenant_id: str = None) -> None:
         from datetime import timedelta
         
-        classes = await self.list_classes(db)
+        # If no mentor is assigned, there can be no mentor conflict
+        if not mentor_email:
+            return
+
+        classes = await self.list_classes(db, tenant_id)
         
         try:
             new_tz = ZoneInfo(timezone)
@@ -50,56 +57,72 @@ class ClassService:
         for cls in classes:
             if cls.id == exclude_id:
                 continue
-                
-            try:
-                cls_tz = ZoneInfo(cls.timezone)
-                existing_start_dt = datetime.fromisoformat(f"{cls.date}T{cls.start_time}:00").replace(tzinfo=cls_tz)
-                existing_end_dt = existing_start_dt + timedelta(minutes=cls.duration_minutes)
-                
-                # Check for overlap in absolute time
-                if new_start_dt < existing_end_dt and new_end_dt > existing_start_dt:
-                    raise HTTPException(
-                        status_code=400, 
-                        detail=f"Time conflict: This slot overlaps with '{cls.course_name} - {cls.topic_name}' ({cls.start_time} {cls.timezone})"
-                    )
-            except HTTPException:
-                raise
-            except Exception as e:
-                logger.error(f"Error checking conflict for class {cls.id}: {e}")
-                continue
+            
+            # Conflict only occurs if they share the same mentor email
+            if cls.mentor_email and cls.mentor_email == mentor_email:
+                try:
+                    cls_tz = ZoneInfo(cls.timezone)
+                    existing_start_dt = datetime.fromisoformat(f"{cls.date}T{cls.start_time}:00").replace(tzinfo=cls_tz)
+                    existing_end_dt = existing_start_dt + timedelta(minutes=cls.duration_minutes)
+                    
+                    # Check for overlap in absolute time
+                    if new_start_dt < existing_end_dt and new_end_dt > existing_start_dt:
+                        raise HTTPException(
+                            status_code=400, 
+                            detail=f"Mentor conflict: Mentor '{mentor_email}' is already scheduled for '{cls.course_name} - {cls.topic_name}' at this time ({cls.start_time} {cls.timezone})"
+                        )
+                except HTTPException:
+                    raise
+                except Exception as e:
+                    logger.error(f"Error checking conflict for class {cls.id}: {e}")
+                    continue
 
-    async def _resolve_course(self, db: AsyncSession, course_id: Optional[str], course_name: Optional[str]):
+    async def _resolve_course(self, db: AsyncSession, course_id: Optional[str], course_name: Optional[str], tenant_id: str):
         if course_id:
-            course = await course_service.get_course(db, course_id)
+            course = await course_service.get_course(db, course_id, tenant_id)
             if not course:
                 raise HTTPException(status_code=400, detail="Course ID not found")
             return course
         if course_name:
-            existing = await course_service.find_course_by_name(db, course_name)
+            existing = await course_service.find_course_by_name(db, course_name, tenant_id)
             if existing:
                 return existing
             from modules.courses.schemas import CourseCreate
-            return await course_service.create_course(db, CourseCreate(name=course_name))
+            return await course_service.create_course(db, CourseCreate(name=course_name), tenant_id)
         raise HTTPException(status_code=400, detail="course_id or course_name required")
 
-    async def list_classes(self, db: AsyncSession) -> List[schemas.ClassSession]:
-        result = await db.execute(select(models.ClassSession))
+    async def list_classes(self, db: AsyncSession, tenant_id: Optional[str] = None) -> List[schemas.ClassSession]:
+        query = select(models.ClassSession)
+        if tenant_id:
+            query = query.where(models.ClassSession.tenant_id == tenant_id)
+        result = await db.execute(query)
         return [schemas.ClassSession.model_validate(c, from_attributes=True) for c in result.scalars().all()]
 
-    async def get_class(self, db: AsyncSession, class_id: str) -> schemas.ClassSession:
-        result = await db.execute(select(models.ClassSession).where(models.ClassSession.id == class_id))
+    async def get_class(self, db: AsyncSession, class_id: str, tenant_id: Optional[str] = None) -> schemas.ClassSession:
+        query = select(models.ClassSession).where(models.ClassSession.id == class_id)
+        if tenant_id:
+            query = query.where(models.ClassSession.tenant_id == tenant_id)
+        result = await db.execute(query)
         db_class = result.scalar_one_or_none()
         if not db_class:
             raise HTTPException(status_code=404, detail="Class not found")
         return schemas.ClassSession.model_validate(db_class, from_attributes=True)
 
-    async def create_class(self, db: AsyncSession, payload: schemas.ClassCreate) -> schemas.ClassSession:
-        course = await self._resolve_course(db, payload.course_id, payload.course_name)
-        timezone = zoom_service.normalize_timezone(payload.timezone or settings.timezone_default)
+    async def create_class(self, db: AsyncSession, payload: schemas.ClassCreate, tenant_id: str) -> schemas.ClassSession:
+        course = await self._resolve_course(db, payload.course_id, payload.course_name, tenant_id)
+        
+        # Load Tenant Settings
+        from modules.settings.models import TenantSettings
+        ts_res = await db.execute(select(TenantSettings).where(TenantSettings.tenant_id == tenant_id))
+        tenant_settings = ts_res.scalar_one_or_none()
+
+        timezone = zoom_service.normalize_timezone(
+            (payload.timezone or (tenant_settings.timezone_default if tenant_settings else None)) or settings.timezone_default
+        )
         duration_minutes = payload.duration_minutes or settings.class_duration_minutes
         
         self._validate_not_past(payload.date, payload.start_time, timezone)
-        await self._check_conflicts(db, payload.date, payload.start_time, timezone, duration_minutes)
+        await self._check_conflicts(db, payload.date, payload.start_time, timezone, duration_minutes, payload.mentor_email, tenant_id=tenant_id)
         
         topic = f"{course.name} - {payload.topic_name}"
         
@@ -112,6 +135,7 @@ class ClassService:
                 start_time=payload.start_time,
                 timezone=timezone,
                 duration=duration_minutes,
+                tenant_settings=tenant_settings
             )
         except Exception as exc:
             logger.error(f"Zoom creation failed: {exc}")
@@ -137,6 +161,7 @@ class ClassService:
                 zoom_meeting_id=zoom_id,
                 zoom_join_url=zoom_url,
                 mentor_email=payload.mentor_email,
+                tenant_id=tenant_id,
                 created_at=now,
                 updated_at=now,
             )
@@ -153,18 +178,24 @@ class ClassService:
         except Exception as db_exc:
             logger.error(f"DB Save failed, rolling back Zoom {zoom_id}: {db_exc}")
             try:
-                await zoom_service.delete_meeting(meeting_id=zoom_id)
+                await zoom_service.delete_meeting(meeting_id=zoom_id, tenant_settings=tenant_settings)
             except Exception:
                 pass
             await db.rollback()
             raise HTTPException(status_code=500, detail="Failed to save class to database.")
 
-    async def update_class(self, db: AsyncSession, class_id: str, payload: schemas.ClassUpdate) -> schemas.ClassSession:
-        existing = await self.get_class(db, class_id)
+    async def update_class(self, db: AsyncSession, class_id: str, payload: schemas.ClassUpdate, tenant_id: str) -> schemas.ClassSession:
+        existing = await self.get_class(db, class_id, tenant_id)
+        old_mentor_email = existing.mentor_email
         
+        # Load Tenant Settings
+        from modules.settings.models import TenantSettings
+        ts_res = await db.execute(select(TenantSettings).where(TenantSettings.tenant_id == tenant_id))
+        tenant_settings = ts_res.scalar_one_or_none()
+
         course = None
         if payload.course_id or payload.course_name:
-             course = await self._resolve_course(db, payload.course_id, payload.course_name)
+             course = await self._resolve_course(db, payload.course_id, payload.course_name, tenant_id)
         
         new_course_name = course.name if course else existing.course_name
         topic_name = payload.topic_name if payload.topic_name is not None else existing.topic_name
@@ -174,9 +205,18 @@ class ClassService:
         timezone = zoom_service.normalize_timezone(payload.timezone if payload.timezone is not None else existing.timezone)
         duration_minutes = payload.duration_minutes if payload.duration_minutes is not None else existing.duration_minutes
         
-        self._validate_not_past(date, start_time, timezone)
-        await self._check_conflicts(db, date, start_time, timezone, duration_minutes, exclude_id=class_id)
-
+        # Only validate past-dates and check conflicts if scheduling fields are modified
+        time_fields_changed = (
+            (payload.date is not None and payload.date != existing.date) or
+            (payload.start_time is not None and payload.start_time != existing.start_time) or
+            (payload.timezone is not None and zoom_service.normalize_timezone(payload.timezone) != existing.timezone) or
+            (payload.duration_minutes is not None and payload.duration_minutes != existing.duration_minutes)
+        )
+        if time_fields_changed:
+            self._validate_not_past(date, start_time, timezone)
+            mentor_email = payload.mentor_email if payload.mentor_email is not None else existing.mentor_email
+            await self._check_conflicts(db, date, start_time, timezone, duration_minutes, mentor_email, exclude_id=class_id, tenant_id=tenant_id)
+        
         topic = f"{new_course_name} - {topic_name}"
         recreated_meeting = None
         try:
@@ -188,6 +228,7 @@ class ClassService:
                 start_time=start_time,
                 timezone=timezone,
                 duration=duration_minutes,
+                tenant_settings=tenant_settings
             )
         except httpx.HTTPStatusError as exc:
             if exc.response.status_code == 404:
@@ -200,6 +241,7 @@ class ClassService:
                         start_time=start_time,
                         timezone=timezone,
                         duration=duration_minutes,
+                        tenant_settings=tenant_settings
                     )
                 except Exception as create_exc:
                     logger.error(f"Failed to re-create Zoom meeting: {create_exc}")
@@ -212,7 +254,7 @@ class ClassService:
             raise HTTPException(status_code=502, detail=f"Zoom integration failed: {exc}")
 
         try:
-            result = await db.execute(select(models.ClassSession).where(models.ClassSession.id == class_id))
+            result = await db.execute(select(models.ClassSession).where(models.ClassSession.id == class_id, models.ClassSession.tenant_id == tenant_id))
             db_class = result.scalar_one_or_none()
             
             update_data = payload.model_dump(exclude_unset=True)
@@ -234,18 +276,34 @@ class ClassService:
             await db.commit()
             await db.refresh(db_class)
             updated_class = schemas.ClassSession.model_validate(db_class, from_attributes=True)
+            updated_class._old_mentor_email = old_mentor_email
             
+            # Emit class_updated event
             await event_bus.emit("class_updated", updated_class)
+            
+            # Emit class_mentor_changed if the assigned mentor has changed
+            if updated_class.mentor_email != old_mentor_email:
+                await event_bus.emit("class_mentor_changed", {
+                    "class_session": updated_class,
+                    "old_mentor_email": old_mentor_email,
+                    "new_mentor_email": updated_class.mentor_email
+                })
+            
             return updated_class
         except Exception as exc:
             await db.rollback()
             raise HTTPException(status_code=500, detail="Failed to update class")
 
-    async def delete_class(self, db: AsyncSession, class_id: str) -> None:
-        existing = await self.get_class(db, class_id)
+    async def delete_class(self, db: AsyncSession, class_id: str, tenant_id: str) -> None:
+        existing = await self.get_class(db, class_id, tenant_id)
         
+        # Load Tenant Settings
+        from modules.settings.models import TenantSettings
+        ts_res = await db.execute(select(TenantSettings).where(TenantSettings.tenant_id == tenant_id))
+        tenant_settings = ts_res.scalar_one_or_none()
+
         try:
-            await zoom_service.delete_meeting(meeting_id=existing.zoom_meeting_id)
+            await zoom_service.delete_meeting(meeting_id=existing.zoom_meeting_id, tenant_settings=tenant_settings)
         except httpx.HTTPStatusError as exc:
             if exc.response.status_code != 404:
                 raise HTTPException(status_code=502, detail=f"Zoom deletion failed: {exc}")
@@ -253,7 +311,7 @@ class ClassService:
             logger.error(f"Zoom deletion failed: {exc}")
 
         try:
-            result = await db.execute(select(models.ClassSession).where(models.ClassSession.id == class_id))
+            result = await db.execute(select(models.ClassSession).where(models.ClassSession.id == class_id, models.ClassSession.tenant_id == tenant_id))
             db_class = result.scalar_one_or_none()
             if db_class:
                 await db.delete(db_class)
@@ -264,27 +322,32 @@ class ClassService:
             await db.rollback()
             raise
 
-    async def sync_with_zoom(self, db: AsyncSession) -> dict:
-        local_classes = await self.list_classes(db)
+    async def sync_with_zoom(self, db: AsyncSession, tenant_id: str) -> dict:
+        # Load Tenant Settings
+        from modules.settings.models import TenantSettings
+        ts_res = await db.execute(select(TenantSettings).where(TenantSettings.tenant_id == tenant_id))
+        tenant_settings = ts_res.scalar_one_or_none()
+
+        local_classes = await self.list_classes(db, tenant_id)
         local_zoom_ids = {c.zoom_meeting_id for c in local_classes}
         removed_count = 0
         imported_count = 0
         total_checked = len(local_classes)
 
         try:
-            zoom_data = await zoom_service.list_meetings()
+            zoom_data = await zoom_service.list_meetings(tenant_settings)
             zoom_meetings = zoom_data.get("meetings", [])
             zoom_meeting_ids = {str(m["id"]) for m in zoom_meetings}
 
             for cls in local_classes:
                 if cls.zoom_meeting_id not in zoom_meeting_ids:
-                    await self.delete_class(db, cls.id)
+                    await self.delete_class(db, cls.id, tenant_id)
                     removed_count += 1
 
-            synced_course = await course_service.find_course_by_name(db, "Synced from Zoom")
+            synced_course = await course_service.find_course_by_name(db, "Synced from Zoom", tenant_id)
             if not synced_course:
                 from modules.courses.schemas import CourseCreate
-                synced_course = await course_service.create_course(db, CourseCreate(name="Synced from Zoom"))
+                synced_course = await course_service.create_course(db, CourseCreate(name="Synced from Zoom"), tenant_id)
 
             for zm in zoom_meetings:
                 z_id = str(zm["id"])
@@ -321,6 +384,7 @@ class ClassService:
                             timezone=normalized_tz,
                             zoom_meeting_id=z_id,
                             zoom_join_url=zm.get("join_url", ""),
+                            tenant_id=tenant_id,
                             created_at=now,
                             updated_at=now,
                         )
@@ -343,18 +407,18 @@ class ClassService:
                 for cls in local_classes:
                     try:
                         await asyncio.sleep(0.2)
-                        await zoom_service.get_meeting(cls.zoom_meeting_id)
+                        await zoom_service.get_meeting(cls.zoom_meeting_id, tenant_settings)
                     except httpx.HTTPStatusError as e:
                         if e.response.status_code == 404:
-                            await self.delete_class(db, cls.id)
+                            await self.delete_class(db, cls.id, tenant_id)
                             removed_count += 1
                 return {"strategy": "surgical_sync", "checked": total_checked, "removed": removed_count, "imported": 0}
             raise
         except Exception as exc:
             raise HTTPException(status_code=500, detail=str(exc))
 
-    async def sync_with_calendar(self, db: AsyncSession) -> dict:
-        local_classes = await self.list_classes(db)
+    async def sync_with_calendar(self, db: AsyncSession, tenant_id: str) -> dict:
+        local_classes = await self.list_classes(db, tenant_id)
         removed_count = 0
         updated_count = 0
         total_checked = 0
@@ -370,7 +434,7 @@ class ClassService:
                 # If event is deleted in GCal
                 if not gcal_event or gcal_event.get('status') == 'cancelled':
                     # Delete locally and from zoom
-                    await self.delete_class(db, cls.id)
+                    await self.delete_class(db, cls.id, tenant_id)
                     removed_count += 1
                     continue
                 
@@ -384,7 +448,7 @@ class ClassService:
                     if gcal_date != cls.date or gcal_time != cls.start_time:
                         # Time was modified in GCal manually. Update our local DB and Zoom.
                         update_payload = schemas.ClassUpdate(date=gcal_date, start_time=gcal_time)
-                        await self.update_class(db, cls.id, update_payload)
+                        await self.update_class(db, cls.id, update_payload, tenant_id)
                         updated_count += 1
 
             except Exception as e:

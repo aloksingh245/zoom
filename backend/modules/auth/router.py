@@ -50,14 +50,20 @@ async def signup(payload: schemas.UserCreate, db: AsyncSession = Depends(get_db)
     # 2. Create the user
     hashed_pwd = utils.hash_password(payload.password)
     verification_token = str(uuid4())
+    user_id = str(uuid4())
     
     db_user = models.User(
+        id=user_id,
         email=payload.email,
         hashed_password=hashed_pwd,
         role=payload.role or "admin",
         is_verified=False,
+        is_active=True,
         verification_token=verification_token
     )
+    # Assign tenant_id: If admin, it is their own ID. Otherwise it is set when created by admin.
+    if db_user.role == "admin":
+        db_user.tenant_id = user_id
     
     db.add(db_user)
     await db.commit()
@@ -99,10 +105,17 @@ async def login(
             detail="Invalid email or password."
         )
 
-    if not user.is_verified:
+    # Allow super_admin to log in directly without verification check
+    if not user.is_verified and user.role != "super_admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Please verify your email address before logging in."
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account has been deactivated. Please contact the Master Admin."
         )
 
     # Generate JWT
@@ -167,13 +180,26 @@ async def reset_password(payload: schemas.ResetPasswordRequest, db: AsyncSession
 
 @router.get("/users/stats")
 async def get_users_stats(db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
-    student_res = await db.execute(select(func.count(models.User.id)).where(models.User.role == "student"))
+    if current_user.role == "super_admin":
+        student_res = await db.execute(select(func.count(models.User.id)).where(models.User.role == "student"))
+        mentor_res = await db.execute(select(func.count(models.User.id)).where(models.User.role == "mentor"))
+        total_res = await db.execute(select(func.count(models.User.id)))
+    else:
+        student_res = await db.execute(
+            select(func.count(models.User.id))
+            .where(models.User.role == "student", models.User.tenant_id == current_user.tenant_id)
+        )
+        mentor_res = await db.execute(
+            select(func.count(models.User.id))
+            .where(models.User.role == "mentor", models.User.tenant_id == current_user.tenant_id)
+        )
+        total_res = await db.execute(
+            select(func.count(models.User.id))
+            .where(models.User.tenant_id == current_user.tenant_id)
+        )
+
     student_count = student_res.scalar() or 0
-    
-    mentor_res = await db.execute(select(func.count(models.User.id)).where(models.User.role == "mentor"))
     mentor_count = mentor_res.scalar() or 0
-    
-    total_res = await db.execute(select(func.count(models.User.id)))
     total_count = total_res.scalar() or 0
     
     return {

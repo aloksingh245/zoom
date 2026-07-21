@@ -68,30 +68,18 @@ export function TopBar({ searchTerm, setSearchTerm, openCreate, syncClasses, syn
       </div>
       <div className="flex items-center gap-6">
         <div className="flex items-center gap-2">
-           {isAdmin && (
-             <>
-               <div className="relative">
-                 <button 
-                    onClick={handleSync}
-                    disabled={isSyncing || loading}
-                    title="Sync with Zoom"
-                    className={`p-2.5 bg-slate-50 text-slate-500 hover:bg-slate-100 rounded-xl transition-all cursor-pointer ${isSyncing ? 'animate-spin' : ''}`}
-                 >
-                   <RotateCw size={20} />
-                 </button>
-               </div>
-               <div className="relative">
-                 <button 
-                    onClick={handleCalSync}
-                    disabled={isCalSyncing || loading}
-                    title="Sync with Google Calendar"
-                    className={`p-2.5 bg-slate-50 text-slate-500 hover:bg-slate-100 rounded-xl transition-all cursor-pointer ${isCalSyncing ? 'animate-spin' : ''}`}
-                 >
-                   <Calendar size={20} />
-                 </button>
-               </div>
-             </>
-           )}
+            {isAdmin && (
+              <div className="relative">
+                <button 
+                   onClick={handleSync}
+                   disabled={isSyncing || loading}
+                   title="Sync with Zoom"
+                   className={`p-2.5 bg-slate-50 text-slate-500 hover:bg-slate-100 rounded-xl transition-all cursor-pointer ${isSyncing ? 'animate-spin' : ''}`}
+                >
+                  <RotateCw size={20} />
+                </button>
+              </div>
+            )}
             <button 
               onClick={toggleTheme}
               title={theme === 'dark' ? "Switch to Light Mode" : "Switch to Dark Mode"}

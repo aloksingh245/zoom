@@ -29,6 +29,7 @@ async def test_email_listener_on_class_created():
         await handle_class_created(created_class)
         
         mock_email_svc.send_class_assigned_notification.assert_called_once_with(
+            class_id="test-id",
             mentor_email="mentor@test.com",
             class_topic="Test Course - Test Topic",
             date="2026-07-20",
@@ -48,6 +49,7 @@ async def test_email_listener_on_class_updated():
         await handle_class_updated(updated_class)
         
         mock_email_svc.send_class_updated_notification.assert_called_once_with(
+            class_id="test-id",
             mentor_email="mentor@test.com",
             class_topic="Test Course - Test Topic",
             date="2026-07-20",

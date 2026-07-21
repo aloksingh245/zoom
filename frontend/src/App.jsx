@@ -16,6 +16,7 @@ import { AuthPage } from './components/Auth/AuthPage'
 import { VerifyEmail } from './components/Auth/VerifyEmail'
 import { ResetPassword } from './components/Auth/ResetPassword'
 import { SettingsPanel } from './components/Settings/SettingsPanel'
+import { SuperAdminPanel } from './components/SuperAdmin/SuperAdminPanel'
 import { ChatBubble } from './components/Agent/ChatBubble'
 
 
@@ -150,8 +151,9 @@ export default function App() {
     setLocalError('')
     setClassesError(null)
 
-    if (isPastLocal(form.date, form.start_time, form.timezone)) {
-      setLocalError(`Start time must be in the future (${form.timezone}).`)
+    const todayStr = formatDate(new Date())
+    if (form.date < todayStr) {
+      setLocalError(`Start date cannot be in the past.`)
       return
     }
 
@@ -290,6 +292,10 @@ export default function App() {
 
           {view === 'settings' && (
             <SettingsPanel />
+          )}
+
+          {view === 'super_admin' && (
+            <SuperAdminPanel />
           )}
         </div>
       </main>

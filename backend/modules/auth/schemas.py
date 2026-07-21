@@ -3,7 +3,7 @@ from typing import Optional
 from datetime import datetime
 
 class UserBase(BaseModel):
-    email: EmailStr
+    email: str
 
 class UserCreate(UserBase):
     password: str
@@ -16,6 +16,8 @@ class UserOut(UserBase):
     id: str
     role: str
     is_verified: bool
+    is_active: bool
+    tenant_id: Optional[str] = None
     created_at: datetime
 
     class Config:
@@ -30,7 +32,7 @@ class TokenData(BaseModel):
     role: Optional[str] = None
 
 class ForgotPasswordRequest(BaseModel):
-    email: EmailStr
+    email: str
 
 class ResetPasswordRequest(BaseModel):
     token: str

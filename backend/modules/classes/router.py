@@ -14,27 +14,29 @@ _pkce_store: dict = {}
 
 @router.get("", response_model=List[schemas.ClassSession])
 async def list_classes(db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
-    return await class_service.list_classes(db)
+    tenant_id = None if current_user.role == "super_admin" else current_user.tenant_id
+    return await class_service.list_classes(db, tenant_id)
 
 @router.get("/{class_id}", response_model=schemas.ClassSession)
 async def get_class(class_id: str, db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
-    return await class_service.get_class(db, class_id)
+    tenant_id = None if current_user.role == "super_admin" else current_user.tenant_id
+    return await class_service.get_class(db, class_id, tenant_id)
 
 @router.post("", response_model=schemas.ClassSession)
 async def create_class(payload: schemas.ClassCreate, db: AsyncSession = Depends(get_db), current_user = Depends(RoleChecker(["admin"]))):
-    return await class_service.create_class(db, payload)
+    return await class_service.create_class(db, payload, current_user.tenant_id)
 
 @router.put("/{class_id}", response_model=schemas.ClassSession)
 async def update_class(class_id: str, payload: schemas.ClassUpdate, db: AsyncSession = Depends(get_db), current_user = Depends(RoleChecker(["admin"]))):
-    return await class_service.update_class(db, class_id, payload)
+    return await class_service.update_class(db, class_id, payload, current_user.tenant_id)
 
 @router.post("/sync")
 async def sync_classes(db: AsyncSession = Depends(get_db), current_user = Depends(RoleChecker(["admin"]))):
-    return await class_service.sync_with_zoom(db)
+    return await class_service.sync_with_zoom(db, current_user.tenant_id)
 
 @router.post("/sync/calendar")
 async def sync_with_calendar(db: AsyncSession = Depends(get_db), current_user = Depends(RoleChecker(["admin"]))):
-    return await class_service.sync_with_calendar(db)
+    return await class_service.sync_with_calendar(db, current_user.tenant_id)
 
 @router.get("/sync/calendar/status")
 async def get_calendar_status(current_user = Depends(get_current_user)):
@@ -143,11 +145,15 @@ async def calendar_callback(code: str, state: str = None):
 
         flow.fetch_token(code=code, code_verifier=code_verifier)
         creds = flow.credentials
+        
+        # Manually attach client details from the flow configuration so they are serialized
+        creds.client_id = flow.client_config.get("client_id")
+        creds.client_secret = flow.client_config.get("client_secret")
 
         with open("token.json", "w") as token_file:
             token_file.write(creds.to_json())
 
-        logger.info("Google Calendar token saved successfully.")
+        logger.info("Google Calendar token saved successfully with client details.")
         frontend_url = settings.app_url or "http://localhost:5173"
 
         html_content = f"""
@@ -211,5 +217,5 @@ async def calendar_callback(code: str, state: str = None):
 
 @router.delete("/{class_id}")
 async def delete_class(class_id: str, db: AsyncSession = Depends(get_db), current_user = Depends(RoleChecker(["admin"]))):
-    await class_service.delete_class(db, class_id)
+    await class_service.delete_class(db, class_id, current_user.tenant_id)
     return {"deleted": True}

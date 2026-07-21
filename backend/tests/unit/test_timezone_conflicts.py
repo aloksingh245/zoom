@@ -17,13 +17,14 @@ async def test_check_conflicts_overlap():
     existing.start_time = "10:00"
     existing.duration_minutes = 90
     existing.timezone = "Asia/Kolkata"
+    existing.mentor_email = "mentor@test.com"
     
     with patch.object(service, 'list_classes', return_value=[existing]):
         # New class: 11:00 - 12:30 IST (Overlaps)
         with pytest.raises(HTTPException) as exc:
-            await service._check_conflicts(db, "2026-03-20", "11:00", "Asia/Kolkata", 90)
+            await service._check_conflicts(db, "2026-03-20", "11:00", "Asia/Kolkata", 90, "mentor@test.com")
         assert exc.value.status_code == 400
-        assert "Time conflict" in exc.value.detail
+        assert "Mentor conflict" in exc.value.detail
 
 @pytest.mark.asyncio
 async def test_check_conflicts_different_timezones():
@@ -37,13 +38,14 @@ async def test_check_conflicts_different_timezones():
     existing.start_time = "10:00"
     existing.duration_minutes = 90
     existing.timezone = "Asia/Kolkata"
+    existing.mentor_email = "mentor@test.com"
     
     with patch.object(service, 'list_classes', return_value=[existing]):
         # New class: 05:00 - 06:30 UTC (Overlaps in absolute time)
         with pytest.raises(HTTPException) as exc:
-            await service._check_conflicts(db, "2026-03-20", "05:00", "UTC", 90)
+            await service._check_conflicts(db, "2026-03-20", "05:00", "UTC", 90, "mentor@test.com")
         assert exc.value.status_code == 400
-        assert "Time conflict" in exc.value.detail
+        assert "Mentor conflict" in exc.value.detail
 
 @pytest.mark.asyncio
 async def test_check_conflicts_no_overlap():
@@ -56,8 +58,9 @@ async def test_check_conflicts_no_overlap():
     existing.start_time = "10:00"
     existing.duration_minutes = 90
     existing.timezone = "Asia/Kolkata"
+    existing.mentor_email = "mentor@test.com"
     
     with patch.object(service, 'list_classes', return_value=[existing]):
         # New class: 12:00 - 13:30 IST (No overlap)
-        await service._check_conflicts(db, "2026-03-20", "12:00", "Asia/Kolkata", 90)
+        await service._check_conflicts(db, "2026-03-20", "12:00", "Asia/Kolkata", 90, "mentor@test.com")
         # Should not raise any exception

@@ -37,7 +37,12 @@ async def transcribe_audio(audio_bytes: bytes, mime_type: str = "audio/webm") ->
                     data=audio_bytes,
                     mime_type=mime_type,
                 ),
-                "Please transcribe this audio into plain text. Provide only the spoken words, with clean grammar, and do not append any commentary."
+                (
+                    "You are an expert speech-to-text transcriber. Transcribe this audio recording into plain English. "
+                    "Ignore background static, keyboard clicks, breathing, and filler words like 'um' or 'uh'. "
+                    "Correct minor grammatical slips. Output ONLY the final spoken transcription text. "
+                    "Do not append any explanations, greetings, or commentary. If there is no speech or only noise, output nothing."
+                )
             ]
         )
         return response.text or ""

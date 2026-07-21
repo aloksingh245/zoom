@@ -8,6 +8,7 @@ class Course(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
     name: Mapped[str] = mapped_column(String, index=True)
+    tenant_id: Mapped[str | None] = mapped_column(String, index=True, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     classes: Mapped[list["ClassSession"]] = relationship("ClassSession", back_populates="course", cascade="all, delete-orphan")

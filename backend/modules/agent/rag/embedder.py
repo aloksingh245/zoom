@@ -35,12 +35,12 @@ from google.genai import types as genai_types
 from core.config import settings
 
 # The embedding model we use.
-# text-embedding-004 is Google's latest general-purpose embedding model.
-EMBEDDING_MODEL = "text-embedding-004"
+# gemini-embedding-2 is Google's latest embedding model, replacing the legacy text-embedding-004.
+EMBEDDING_MODEL = "gemini-embedding-2"
 
 # Dimension of the embedding vectors produced by this model.
 # ChromaDB needs to know this when creating a collection.
-EMBEDDING_DIMENSION = 768
+EMBEDDING_DIMENSION = 3072
 
 
 def _get_client() -> genai.Client:

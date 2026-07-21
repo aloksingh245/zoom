@@ -37,10 +37,16 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
     if user is None:
         raise credentials_exception
         
-    if not user.is_verified:
+    if not user.is_verified and user.role != "super_admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Please verify your email address before continuing."
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account has been deactivated. Please contact the Master Admin."
         )
         
     return user
@@ -50,6 +56,10 @@ class RoleChecker:
         self.allowed_roles = allowed_roles
         
     def __call__(self, current_user: User = Depends(get_current_user)) -> User:
+        # A super_admin bypasses all role checks
+        if current_user.role == "super_admin":
+            return current_user
+            
         if current_user.role not in self.allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
